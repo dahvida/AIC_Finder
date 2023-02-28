@@ -11,7 +11,7 @@ Code and scripts to employ Minimum Variance Sampling Analysis (MVS-A) to find As
 - **Logs:** Contains the raw predictions from each approach, dataset statistics and their change as a result of preprocessing  
 
 ## Installation  
-All necessary packages can be installed via conda from the environment.yml file.  
+All necessary packages can be installed via conda from the *environment.yml* file.  
 ```
 git clone https://github.com/dahvida/AIC_finder
 conda env create --name AIC_finder --file=environments.yml
