@@ -18,7 +18,7 @@ conda env create --name AIC_finder --file=environments.yml
 conda activate AIC_finder
 ```
 
-### Scripts tutorial
+## Scripts tutorial
 To run the analysis on all datasets saved in the */Datasets* folder from the command line, move to the */Scripts* folder and simply run the command below. The results will be saved in the */Results* folder, while the raw predictions will appear in */Logs/eval*.  
 ```
 cd /AIC_finder/Scripts
@@ -29,8 +29,13 @@ Below there is an example to run it on a single dataset, only using MVS-A and PA
 ```
 python3 eval_pipeline.py --dataset kinase.csv --catboost no --filter_type PAINS_A --run_logging no
 ```
+To generate a new dataset for the analysis, you need two datatables from PubChem, one for the primary screen and one for the confirmatory screen. Save the two .csv files in the */Raw_data* folder with their original name and then move to the */Scripts* folder. Then, run the following command:  
+```
+python3 cleanup_pipeline.py --AID_1 example_1 --AID_2 example_2 --filename my_new_dataset
+```
+The new file will be saved in the */Results* folder as .csv, while a log of all dataset changes during cleanup will automatically appear in */Logs/cleanup*  
 
-### Jupyter notebook tutorial
+## Jupyter notebook tutorial
 MVS-A can also be easily used from a jupyter notebook. More details can be found in the documentation of *MVS_A.py*.  
  Here is an example on how to use it:  
 ```
