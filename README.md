@@ -18,7 +18,11 @@ conda env create --name AIC_finder --file=environments.yml
 conda activate AIC_finder
 ```
 
-## Scripts tutorial
+## Tutorial
+Here are the tutorials for using this tool via command line and in a jupyter notebook. An extensive description of all functions, classes and command line parameter options can be found in the respective file documentation.  
+A summary of the contents of each python file is provided in the */Scripts* folder.  
+
+### Scripts
 To run the analysis on all datasets saved in the */Datasets* folder from the command line, move to the */Scripts* folder and simply run the command below. The results will be saved in the */Results* folder, while the raw predictions will appear in */Logs/eval*.  
 ```
 cd /AIC_finder/Scripts
@@ -35,7 +39,7 @@ python3 cleanup_pipeline.py --AID_1 example_1 --AID_2 example_2 --filename my_ne
 ```
 The new file will be saved in the */Results* folder as .csv, while a log of all dataset changes during cleanup will automatically appear in */Logs/cleanup*  
 
-## Jupyter notebook tutorial
+### Jupyter notebook tutorial
 MVS-A can also be easily used from a jupyter notebook. More details can be found in the documentation of *MVS_A.py*.  
  Here is an example on how to use it:  
 ```
