@@ -1,4 +1,6 @@
 # AIC_Finder
+![Python 3.7](https://img.shields.io/badge/python-3.7%20%7C%203.8-brightgreen)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)  
 Code and scripts to employ Minimum Variance Sampling Analysis (MVS-A) to find Assay Interfering Compounds (AIC) in High Throughput Screening data.  
 
 ## Repository structure
@@ -12,8 +14,8 @@ Code and scripts to employ Minimum Variance Sampling Analysis (MVS-A) to find As
 All necessary packages can be installed via conda from the environment.yml file.  
 ```
 git clone https://github.com/dahvida/AIC_finder
-conda env create --name AIC --file=environments.yml
-conda activate GBM
+conda env create --name AIC_finder --file=environments.yml
+conda activate AIC_finder
 ```
 
 ### Scripts tutorial
