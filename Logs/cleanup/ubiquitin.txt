@@ -1,0 +1,8 @@
+Primary - Compounds before preprocessing: 330481
+Primary - Actives before preprocessing: 1540
+Primary - Compounds after preprocessing: 330197
+Primary - Actives after preprocessing: 1533
+Confirmatory - Compounds before preprocessing: 1210
+Confirmatory - Actives before preprocessing: 354
+Confirmatory - Compounds after preprocessing: 1210
+Confirmatory - Actives after preprocessing: 354.0
