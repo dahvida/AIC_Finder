@@ -16,7 +16,7 @@ conda env create --name AIC --file=environments.yml
 conda activate GBM
 ```
 
-## Scripts tutorial
+### Scripts tutorial
 To run the analysis on all datasets saved in the */Datasets* folder from the command line, move to the */Scripts* folder and simply run the command below. The results will be saved in the */Results* folder, while the raw predictions will appear in */Logs/eval*.  
 ```
 cd /AIC_finder/Scripts
@@ -28,7 +28,7 @@ Below there is an example to run it on a single dataset, only using MVS-A and PA
 python3 eval_pipeline.py --dataset kinase.csv --catboost no --filter_type PAINS_A --run_logging no
 ```
 
-##Jupyter notebook tutorial
+### Jupyter notebook tutorial
 MVS-A can also be easily used from a jupyter notebook. More details can be found in the documentation of *MVS_A.py*.  
  Here is an example on how to use it:  
 ```
