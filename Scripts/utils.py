@@ -1,18 +1,28 @@
+from typing import *
 import numpy as np
-from rdkit.ML.Scoring.Scoring import CalcBEDROC
-from sklearn.metrics import precision_score
-from rdkit.Chem import AllChem, rdMolDescriptors, Descriptors
-from rdkit import DataStructs
-from rdkit.ML.Descriptors import MoleculeDescriptors
-from rdkit.Chem.FilterCatalog import FilterCatalog, FilterCatalogParams
+import rdkit
+from rdkit import Chem, DataStructs
+from rdkit.Chem import AllChem
 from rdkit.Chem.Scaffolds import MurckoScaffold
-from rdkit import Chem
 import pandas as pd
 
 ###############################################################################
 
-def get_ECFP(mols, radius = 2, nbits = 1024):
+def get_ECFP(
+        mols: List[rdkit.Chem.rdchem.Mol],
+        radius:int = 2,
+        nbits:int = 1024
+        ) -> np.ndarray:
+    """Calculates ECFPs for given set of molecules
+    
+    Args:
+        mols:   (M,) mols to compute ECFPs  
+        radius: radius for fragment calculation
+        nbits:  bits available for folding ECFP
 
+    Returns:
+        array (M,1024) of ECFPs 
+    """
     #create empty array as container for ecfp
     array = np.empty((len(mols), nbits), dtype=np.float32)
 
@@ -26,7 +36,18 @@ def get_ECFP(mols, radius = 2, nbits = 1024):
 
 #-----------------------------------------------------------------------------#
 
-def get_scaffold_rate(mols):
+def get_scaffold_rate(
+        mols: List[rdkit.Chem.rdchem.Mol]
+        ) -> float:
+    """Computes scaffold diversity for given set of molecules
+    
+    Args:
+        mols:   (M,) mols to check for scaffold diversity
+
+    Returns:
+        percentage of unique Murcko scaffolds in the set, as the number of
+        unique Murcko scaffolds divided by the number of molecules
+    """
     
     #safety check (can happen with datasets with very low % of
     #primary actives in confirmatory dataset)
@@ -46,13 +67,30 @@ def get_scaffold_rate(mols):
         n_scaffs = len(scaffs)
         rate = n_scaffs * 100 / tot_mols
     else:
-        rate = 0
+        rate = 0.0
 
     return rate
     
 #-----------------------------------------------------------------------------#
     
-def get_labels(dataframe):
+def get_labels(
+        dataframe: pd.DataFrame
+        ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List]:
+    """Fetches all necessary labels for AIC analysis
+    
+    Args:
+        dataframe:  (M,3) table with merged primary and confirmatory assay 
+                    information
+
+    Returns:
+        A tuple containing:
+            1. (M,) Primary screen labels
+            2. (V,) FP labels for primary actives with confirmatory readout
+            3. (V,) TP labels for primary actives with confirmatory readout
+            4. (V,) Position of primary actives with confirmatory readout inside
+            primary screen data
+
+    """
 
     #primary labels for training ML models
     y_p = np.array(dataframe["Primary"])
@@ -76,7 +114,23 @@ def get_labels(dataframe):
 
 #-----------------------------------------------------------------------------#
 
-def process_FP(y, vals_box, percentile = 90):
+def process_FP(
+        y: np.ndarray,
+        vals_box: List[float],
+        percentile:int = 90
+        ) -> Tuple[np.ndarray, np.ndarray]:
+    """Converts raw importance scores in binary predictions using percentiles
+    
+    Args:
+        y:          (M,) primary screen labels
+        vals_box:   (M,) raw importance scores
+        percentile: value to use for thresholding
+
+    Returns:
+        A tuple containing two arrays (M,) with labels indicating whether
+        compounds are TPs or FPs according to the importances predicted by
+        the ML model
+    """
 
     #select importance scores from primary actives
     idx_pos = np.where(y == 1)[0]
@@ -104,33 +158,69 @@ def process_FP(y, vals_box, percentile = 90):
 
 #-----------------------------------------------------------------------------#
 
-def store_row(analysis_array,
-              dataset_array,
-              fp_rate,
-              tp_rate,
-              index):
+def store_row(
+        analysis_array: np.ndarray,
+        dataset_array: np.ndarray,
+        fp_rate: float,
+        tp_rate: float,
+        index: int
+        ) -> np.ndarray:
+    """Stores i-th dataset results in performance container for X datasets
     
-    analysis_array[index, 0] = np.mean(dataset_array[:,0])
-    analysis_array[index, 1] = np.std(dataset_array[:,0])
-    analysis_array[index, 2] = fp_rate
-    analysis_array[index, 3] = np.mean(dataset_array[:,1])
-    analysis_array[index, 4] = np.std(dataset_array[:,1])
-    analysis_array[index, 5] = tp_rate
-    analysis_array[index, 6] = np.mean(dataset_array[:,2])
-    analysis_array[index, 7] = np.std(dataset_array[:,2])
-    analysis_array[index, 8] = np.mean(dataset_array[:,3])
-    analysis_array[index, 9] = np.std(dataset_array[:,3])
+    Args:
+        analysis_array: (X,10) dataframe that stores results of a given
+                        algorithm for all datasets
+        dataset_array:  (1,4) array with the results of a given algorithm on
+                        the i-th dataset
+        fp_rate:        fraction of false positives in the confirmatory dataset
+        tp_rate:        fraction of true positives in the confirmatory dataset
+        index:          i-th row position to store results in
+
+    Returns:
+        Updated analysis array with results stored in the correct row (not the
+        most elegant solution but at least it provides a straightforward way
+        to handle both single and multi dataset performance collection)
+    """
+
+    analysis_array[index, 0] = np.mean(dataset_array[:,0])      #mean training time
+    analysis_array[index, 1] = np.std(dataset_array[:,0])       #STD training time
+    analysis_array[index, 2] = fp_rate                          #baseline FP rate
+    analysis_array[index, 3] = np.mean(dataset_array[:,1])      #mean precision@90 FP
+    analysis_array[index, 4] = np.std(dataset_array[:,1])       #STD precision@90 FP
+    analysis_array[index, 5] = tp_rate                          #baseline TP rate
+    analysis_array[index, 6] = np.mean(dataset_array[:,2])      #mean precision@90 TP
+    analysis_array[index, 7] = np.std(dataset_array[:,2])       #STD precision@90 TP
+    analysis_array[index, 8] = np.mean(dataset_array[:,3])      #means scaffold diversity
+    analysis_array[index, 9] = np.std(dataset_array[:,3])       #STD scaffold diversity
     
     return analysis_array
 
 #-----------------------------------------------------------------------------#
 
-def save_results(results,
-                 dataset_names,
-                 filename,
-                 filter_type
-                 ):
+def save_results(
+        results: List[np.ndarray],
+        dataset_names: List,
+        filename: str,
+        filter_type: str
+        ) -> None:
+    """Saves results from all algorithms to their respective .csv files
     
+    Args:
+        results:        list (3,) containing results arrays for all algorithms.
+                        In case one algorithm was not selected for the run, it
+                        is stored as an empty array in this list and it will 
+                        not be saved to .csv
+        dataset_names:  list (X,) of all dataset names analysed in the run
+        filename:       common name of the .csv files to use when saving (i.e.
+                        if filename=output, the .csv with MVS-A results will be
+                        saved as "mvsa_output.csv")
+        filter_type:    structural alerts name to append when saving the performance
+                        of fragment filters (i.e. "filter_PAINS_output.csv")
+
+    Returns:
+        None
+    """
+
     column_names = [
                 "Time - mean", "Time - STD",
                 "FP rate",
@@ -145,7 +235,7 @@ def save_results(results,
     algorithm = ["mvsa_", "catboost_", "filter_" + filter_type + "_"]
     
     for i in range(len(results)):
-        if np.sum(results[i]) != 0:
+        if np.sum(results[i]) != 0:             #save only if array is not empty
             db = pd.DataFrame(
                 data = results[i],
                 index = dataset_names,

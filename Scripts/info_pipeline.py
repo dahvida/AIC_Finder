@@ -1,3 +1,9 @@
+"""Dataset analysis script.
+
+Pipeline to get relevant dataset statistics to evaluate data quality
+and contextualize AIC retrieval performance. 
+"""
+
 from utils import *
 import pandas as pd
 import numpy as np
@@ -6,9 +12,15 @@ import os
 
 #####################################################################
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', default="all")
-parser.add_argument('--filename', default="dataset_report")
+parser = argparse.ArgumentParser(description=__doc__,
+                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+parser.add_argument('--dataset', default="all",
+                    help="Which dataset to use for the analysis, options: [all, specific_name]")
+
+parser.add_argument('--filename', default="dataset_report",
+                    help="Name to use when saving the report")
+
 args = parser.parse_args()
 
 #####################################################################

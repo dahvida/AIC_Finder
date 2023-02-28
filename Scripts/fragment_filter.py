@@ -1,12 +1,25 @@
+from typing import *
+import rdkit
 from rdkit import Chem
-from rdkit.Chem import AllChem
 from rdkit.Chem.FilterCatalog import FilterCatalog, FilterCatalogParams
 import numpy as np
 
 ###############################################################################
 
-def filter_predict(mols, catalog_name):
+def filter_predict(
+        mols: List[rdkit.Chem.rdchem.Mol],
+        catalog_name: str
+        ) -> List[int]:
+    """Uses structural alerts to predict whether compounds are TP or FP
     
+    Args:
+        mols:           (M,) molecules to predict
+        catalog_name:   name of the structural alerts set to use for
+                        predictions
+
+    Returns:
+        list (M,) of predictions according to chosen structural alert
+    """
     #create RDKIT filter catalog dictionary (could be expanded)
     catalogs = {
         "PAINS":    FilterCatalogParams.FilterCatalogs.PAINS,

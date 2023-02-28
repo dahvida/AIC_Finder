@@ -1,3 +1,4 @@
+from typing import *
 from utils import *
 import numpy as np
 from sklearn.metrics import precision_score
@@ -8,18 +9,34 @@ from catboost import Pool
 from catboost import CatBoostClassifier as clf
 from rdkit import Chem
 import pandas as pd
+import rdkit
 
 ###############################################################################
 
 def run_logger(
-        mols,
-        idx,
-        y_f,
-        y_c,
-        flags,
-        flags_alt,
-        algorithm
-        ):
+        mols: List[rdkit.Chem.rdchem.Mol],
+        idx: List[int],
+        y_f: np.ndarray,
+        y_c: np.ndarray,
+        flags: np.ndarray,
+        flags_alt: np.ndarray,
+        algorithm: str
+        ) -> pd.DataFrame:
+    """Logs raw predictions for a given algorithm
+
+    Args:
+        mols:       (M,) mol objects from primary data
+        idx:        (V,) positions of primary actives with confirmatory
+                    readout
+        y_f:        (V,) false positive labels (1=FP)
+        y_c:        (V,) true positive labels (1=FP)
+        flags:      (V,) FP predictions
+        flags_alt:  (V,) TP predictions
+        algorithm:  name of the algorithm for FP/TP detection
+    
+    Returns:
+        Dataframe (V,5) containing SMILES, true labels and raw predictions
+    """
     
     #get primary actives with confirmatory measurement
     mols_subset = [mols[x] for x in idx]
@@ -39,15 +56,33 @@ def run_logger(
 #-----------------------------------------------------------------------------#
 
 def run_mvsa(
-        mols,
-        x,
-        y_p,
-        y_f,
-        y_c,
-        idx,
-        replicates,
-        log_predictions = False
-        ):
+        mols: List[rdkit.Chem.rdchem.Mol],
+        x: np.ndarray,
+        y_p: np.ndarray,
+        y_f: np.ndarray,
+        y_c: np.ndarray,
+        idx: List[int],
+        replicates: int,
+        log_predictions: bool = True
+        ) -> Tuple[np.ndarray, pd.DataFrame]:
+    """Executes MVS-A analysis on given dataset
+    
+    Args:
+        mols:               (M,) mol objects from primary data
+        x:                  (M, 1024) ECFPs of primary screen molecules
+        y_p:                (M,) primary screen labels
+        y_f:                (V,) false positive labels (1=FP)        
+        y_c:                (V,) true positive labels (1=FP)
+        idx:                (V,) positions of primary actives with confirmatory    
+                            readout  
+        replicates:         number of replicates to use for the run
+        log_predictions:    enables raw predictions logging
+     
+    Returns:
+        Tuple containing one array (1,4) with precision@90 for FP and TP retrieval, 
+        scaffold diversity and training time, and one dataframe (V,5) with
+        SMILES, true labels and raw predictions
+    """
     
     #create results containers
     temp = np.zeros((replicates,4))
@@ -92,13 +127,29 @@ def run_mvsa(
 #-----------------------------------------------------------------------------#
 
 def run_filter(
-        mols,
-        idx,
-        filter_type,
-        y_f,
-        y_c,
-        log_predictions = False
-        ):
+        mols: List[rdkit.Chem.rdchem.Mol],
+        idx: List[int],
+        filter_type: str,
+        y_f: np.ndarray,
+        y_c: np.ndarray,
+        log_predictions: bool = True
+        ) -> Tuple[np.ndarray, pd.DataFrame]:
+    """Executes structural alert analysis on given dataset
+    
+    Args:
+        mols:               (M,) mol objects from primary data
+        idx:                (V,) positions of primary actives with confirmatory    
+                            readout  
+        filter_type:        name of the structural alerts class to use                   
+        y_f:                (V,) false positive labels (1=FP)        
+        y_c:                (V,) true positive labels (1=FP)
+        log_predictions:    enables raw predictions logging
+     
+    Returns:
+        Tuple containing one array (1,4) with precision@90 for FP and TP retrieval, 
+        scaffold diversity and training time, and one dataframe (V,5) with
+        SMILES, true labels and raw predictions
+    """
 
     #create results containers
     temp = np.zeros((1,4))
@@ -132,16 +183,34 @@ def run_filter(
 #-----------------------------------------------------------------------------#
 
 def run_catboost(
-        mols,
-        x,
-        y_p,
-        y_f,
-        y_c,
-        idx,
-        replicates,
-        log_predictions = False
-        ):
+        mols: List[rdkit.Chem.rdchem.Mol],
+        x: np.ndarray,
+        y_p: np.ndarray,
+        y_f: np.ndarray,
+        y_c: np.ndarray,
+        idx: List[int],
+        replicates: int,
+        log_predictions = True
+        ) -> Tuple[np.ndarray, pd.DataFrame]:
+    """Executes CatBoost analysis on given dataset
     
+    Args:
+        mols:               (M,) mol objects from primary data
+        x:                  (M, 1024) ECFPs of primary screen molecules
+        y_p:                (M,) primary screen labels
+        y_f:                (V,) false positive labels (1=FP)        
+        y_c:                (V,) true positive labels (1=FP)
+        idx:                (V,) positions of primary actives with confirmatory    
+                            readout  
+        replicates:         number of replicates to use for the run
+        log_predictions:    enables raw predictions logging
+     
+    Returns:
+        Tuple containing one array (1,4) with precision@90 for FP and TP retrieval, 
+        scaffold diversity and training time, and one dataframe (V,5) with
+        SMILES, true labels and raw predictions
+    """
+
     #create results containers
     temp = np.zeros((replicates,4))
     logs = pd.DataFrame([])
@@ -180,26 +249,6 @@ def run_catboost(
                                 flags[idx], "catboost")
     
     return temp, logs
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -1,3 +1,9 @@
+"""Dataset preprocessing script.
+
+Pipeline to merge and preprocess a pair of primary-confirmatory assays into a
+single .csv file that can be used for downstream analysis.
+"""
+
 import pandas as pd
 from rdkit import Chem
 import numpy as np
@@ -7,10 +13,18 @@ import argparse
 
 ###############################################################################
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--AID_1')		
-parser.add_argument('--AID_2')
-parser.add_argument('--filename')
+parser = argparse.ArgumentParser(description=__doc__,
+        formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+
+parser.add_argument('--AID_1',
+                    help="AID number of the primary assay")		
+
+parser.add_argument('--AID_2',
+                    help="AID number of the confirmatory assay")
+
+parser.add_argument('--filename', default="output",
+                    help="Name to use when saving the processed dataset")
+
 args = parser.parse_args()
 
 ###############################################################################

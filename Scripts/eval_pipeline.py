@@ -1,3 +1,12 @@
+"""Performance analysis script.
+
+Pipeline to run the AIC analysis using MVS-A, CatBoost and structural alerts. Provides
+options to control the target dataset, which algorithms to employ for the run, 
+number of iterations and whether to log raw predictions. The target dataset(s) 
+must be stored in the ../Datasets folder. To log predictions, all algorithms
+must be enabled for the run.
+"""
+
 from utils import *
 from evals import *
 import numpy as np
@@ -9,15 +18,33 @@ import time
 
 ###############################################################################
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', default="all")		
-parser.add_argument('--mvs_a', default="yes")
-parser.add_argument('--catboost', default="yes")
-parser.add_argument('--fragment_filter', default="yes")
-parser.add_argument('--filter_type', default="PAINS")
-parser.add_argument('--replicates', default=5, type=int)
-parser.add_argument('--filename', default="output")
-parser.add_argument('--log_predictions', default="no")
+parser = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+parser.add_argument('--dataset', default="all",
+                    help="Which dataset from ../Datasets to use for the analysis, options: [all, specific_name]")
+
+parser.add_argument('--mvs_a', default="yes",
+                    help="Whether to use MVS-A for the run, options: [yes, no]")
+
+parser.add_argument('--catboost', default="yes",
+                    help="Whether to use CatBoost for the run, options: [yes, no]")
+
+parser.add_argument('--fragment_filter', default="yes",
+                    help="Whether to use a fragment filter for the run, options: [yes, no]")
+
+parser.add_argument('--filter_type', default="PAINS",
+                    help="Which fragment set to use for the run, options: [PAINS, PAINS_A, PAINS_B, PAINS_C, NIH]")
+
+parser.add_argument('--replicates', default=5, type=int,
+                    help="How many replicates to use for MVS-A and CatBoost")
+
+parser.add_argument('--filename', default="output",
+                    help="Name to use when saving performance results")
+
+parser.add_argument('--log_predictions', default="yes",
+                    help="Whether to log raw predictions, only works if all algorithms are enabled, options: [yes, no]")
+
 args = parser.parse_args()
 
 ###############################################################################
@@ -130,18 +157,6 @@ if __name__ == "__main__":
          replicates = args.replicates,
          filename = args.filename,
          log_predictions = args.log_predictions)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

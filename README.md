@@ -39,7 +39,7 @@ python3 cleanup_pipeline.py --AID_1 example_1 --AID_2 example_2 --filename my_ne
 ```
 The new file will be saved in the */Results* folder as .csv, while a log of all dataset changes during cleanup will automatically appear in */Logs/cleanup*  
 
-### Jupyter notebook tutorial
+### Jupyter notebook
 MVS-A can also be easily used from a jupyter notebook. More details can be found in the documentation of *MVS_A.py*.  
  Here is an example on how to use it:  
 ```

@@ -3,14 +3,50 @@ import numpy as np
 from sklearn.metrics import *
 
 class sample_analysis:
+    """Implementation of MVS-A for sample importance analysis.
     
+    This class provides all methods necessary to use MVS-A to
+    determine which samples are most influential during the training
+    of LightGBM classifiers. These importance estimates can be
+    used to identify false positives and true positives in the 
+    training set without the need of a clean validation set.
+    
+    Attributes:
+        x:              array of molecular features (M, K) for the
+                        training set, i.e. ECFPs
+        y:              array of training set labels (M,)
+        params:         hyperparameter dict for the LightGBM classifier
+        verbose:        whether to print info during each step
+        seed:           random seed for reproducibility
+
+        model:          trained LightGBM model (set by self.get_model)
+        n_leaves:       number of leaves for each tree in the ensemble
+                        (set by self.get_model)
+        n_estimators:   number of trees in the ensemble (set by
+                        self.get_model)
+    """
+
     def __init__(self,
-                 x,
-                 y,
-                 params = None,
-                 verbose = True,
-                 seed = 0
-                 ):
+            x: np.ndarray,
+            y: np.ndarray,
+            params: dict = None,
+            verbose: bool = True,
+            seed: int = 0
+            ) -> None:
+        """Instantiates class object according to training dataset and
+        user preferences
+
+        Args:
+            x:              array of molecular features (M, K) for the
+                            training set, i.e. ECFPs
+            y:              array of training set labels (M,)
+            params:         hyperparameter dict for the LightGBM classifier
+            verbose:        whether to print info during each step
+            seed:           random seed for reproducibility
+
+        Returns:
+            None
+        """
 
         #store relevant attributes
         self.x = np.array(x)
@@ -33,7 +69,17 @@ class sample_analysis:
                            }
                 
         
-    def get_model(self):
+    def get_model(self) -> None:
+        """Trains LightGBM classifier on loaded training set and
+        saves it in the class
+        
+        Args:
+            None
+
+        Returns:
+            None
+        """
+
         #train model with LightGBM API
         self.model = lgb.train(params = self.params,
                                    train_set = self.dataset
@@ -50,7 +96,19 @@ class sample_analysis:
         if self.verbose is True:
             print("[MVS-SA]: LightGBM model constructed, used", self.n_estimators, "trees")    
     
-    def get_l1(self, tree_n):
+    def get_l1(self,
+            tree_n: int
+            ) -> float:
+        """Computes L1 norm of leaf weights for i-th tree, which
+        will normalize square hessians when computing MVS scores
+        
+        Args:
+            tree_n: tree ID inside the ensemble
+
+        Returns:
+            L1 norm of leaf weights for i-th tree
+        """
+
         #get n_leaves for n-th tree
         n = self.n_leaves[tree_n]
         l1 = 0
@@ -61,7 +119,23 @@ class sample_analysis:
 
         return l1
         
-    def get_score(self, preds, l1):
+    def get_score(self,
+            preds: np.ndarray,
+            l1: float
+            ) -> np.ndarray:
+        """Computes MVS scores for i-th iteration
+        
+        Args:
+            preds:  array (M,) of predictions at the i-th
+                    iteration (sum of single tree preds up
+                    to i)
+            l1:     L1 norm of leaf weights for the last tree
+
+        Returns:
+            array (M,) of MVS scores for all samples at the
+            i-th iteration
+        """
+
         #get squared gradient for i-th prediction
         grad = np.subtract(preds, self.y)
         grad_2 = np.multiply(grad, grad)
@@ -78,7 +152,23 @@ class sample_analysis:
         
         return score
     
-    def get_importance(self, return_trajectory = False):
+    def get_importance(self,
+            return_trajectory: bool = False
+            ) -> np.ndarray:
+        """Computes global MVS-A score for all samples
+        
+        Args:
+            return_trajectory:  defines whether to keep all MVS scores
+                                for each iteration or to sum them up
+        
+        Returns:
+            An array (M,) defining the global importance across
+            the training process for all samples. If return_trajectory
+            is True, it returns an array (M,T), where T = self.n_estimators.
+            This can be useful if you want to monitor the importance
+            change of given samples across training.
+                                
+        """
         #prealloc results box with correct size (n_compounds, n_trees)
         vals_box = np.empty((self.x.shape[0], self.n_estimators), dtype=np.float64)
 
