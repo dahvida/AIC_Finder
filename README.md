@@ -4,11 +4,11 @@
 Code and scripts to employ Minimum Variance Sampling Analysis (MVS-A) to find Assay Interfering Compounds (AIC) in High Throughput Screening data.  
 
 ## Repository structure
-- [Datasets:](Datasets) Contains all processed datasets used in this study as .csv files  
-- [Raw_data:](Raw_data) Contains the raw HTS assays used to generate the processed datasets for the analysis  
-- [Scripts:](Scripts) Contains all scripts and utility functions used to reproduce the results and use the tool  
-- [Results:](Results) Contains the performance metrics calculated by the *eval_pipeline.py* script  
-- [Logs:](Logs) Contains the raw predictions from each approach, dataset statistics, metadata and their change as a result of preprocessing  
+- [Datasets:](Datasets) Contains all processed datasets used in this study as .csv files.  
+- [Raw_data:](Raw_data) Contains the raw HTS assays used to generate the processed datasets for the analysis.  
+- [Scripts:](Scripts) Contains all scripts and utility functions used to reproduce the results and use the tool.  
+- [Results:](Results) Contains the performance metrics calculated by the *eval_pipeline.py* script.  
+- [Logs:](Logs) Contains the raw predictions from each approach, dataset statistics, metadata and a log of the changes from assay preprocessing.   
 
 ## Installation  
 All necessary packages can be installed via conda from the [environment.yml](environment.yml) file.  
@@ -37,7 +37,7 @@ To generate a new dataset for the analysis, you need two datatables from PubChem
 ```
 python3 cleanup_pipeline.py --AID_1 example_1 --AID_2 example_2 --filename my_new_dataset
 ```
-The new file will be saved in the [Results](Results) folder as .csv, while a log of all dataset changes during cleanup will automatically appear in [Logs/cleanup](Logs/cleanup).  
+The new file will be saved in the [Results](Results) folder as .csv, while a log of all dataset changes during cleanup will automatically appear in [Logs/cleanup](Logs/cleanup). Some example outputs are already present in that folder.  
 
 ### Jupyter notebook
 MVS-A can also be easily used from a jupyter notebook. More details can be found in the documentation of [MVS_A.py](Scripts/MVS_A.py).  
