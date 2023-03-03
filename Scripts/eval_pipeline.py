@@ -62,8 +62,11 @@ def main(dataset,
     if log_predictions == "no":
         log_predictions = False
     else:
-        log_predictions = True
-        assert mvs_a == catboost == fragment_filter == "yes", "[eval]: To log predictions, all algorithms must be enabled for the run"
+        if mvs_a == catboost == fragment_filter == "yes":
+            log_predictions = True
+        else:
+            print("[eval]: log_predictions works only if all AIC detection algorithms were enabled, setting it to False")
+            log_predictions = False
     
     #adjust dataset_names depending on if the user chose a single dataset
     if dataset != "all":
