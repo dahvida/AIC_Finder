@@ -42,7 +42,7 @@ The new file will be saved in the */Results* folder as .csv, while a log of all 
 ### Jupyter notebook
 MVS-A can also be easily used from a jupyter notebook. More details can be found in the documentation of *MVS_A.py*.  
  Here is an example on how to use it:  
-```
+```python
 #import packages
 from utils import process_FP
 from MVS_A import *
