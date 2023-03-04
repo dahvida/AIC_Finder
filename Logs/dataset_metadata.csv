@@ -1,0 +1,18 @@
+Codename,Source publication ID,Primary AID,Confirmatory AID,Target
+GPCR,PMC5962024,485270,492964,Orexin1
+GPCR_2,PMC5962024,1040,1254,NPY-Y1 receptor
+GPCR_3,PMC5962024,628,677,M1 Muscarinic Receptor antagonists
+ion_channel,PMC5962024,1672,2032,Potassium Ion Channel Kir2.1
+ion_channel_2,PMC5962024,449739,489005,Cav3 T-type calcium channel
+ion_channel_3,PMC5962024,2239,2287,KCNQ2
+kinase,PMC5962024,2661,2821,Serine/Threonine Kinase 33
+transporter,PMC5962024,488975,493221,Choline transporter
+transcription,10.26434/chemrxiv-2022-cb3tz,504558,588343,NF-kB Epstein-Barr
+transcription_2,10.26434/chemrxiv-2022-cb3tz,2098,2382,HSF1
+transcription_3,10.26434/chemrxiv-2022-cb3tz,624304,624474,SKN-1
+ubiquitin,10.26434/chemrxiv-2022-cb3tz,485273,493155,UBC13
+serine,10.26434/chemrxiv-2022-cb3tz,873,1431,Human Kallikrein 5
+splicing,10.26434/chemrxiv-2022-cb3tz,2221,435010,RecA intein
+channel_atp,10.26434/chemrxiv-2022-cb3tz,720511,743267,CFTR
+cysteine_protease,10.26434/chemrxiv-2022-cb3tz,686996,720632,Caspase 6
+zinc_finger,10.26434/chemrxiv-2022-cb3tz,1832,1960,zinc finger protein mex-5
