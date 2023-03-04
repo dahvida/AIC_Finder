@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(description=__doc__,
 parser.add_argument('--dataset', default="all",
                     help="Which dataset to use for the analysis, options: [all, specific_name]")
 
-parser.add_argument('--filename', default="dataset_report",
+parser.add_argument('--filename', default="dataset_statistics",
                     help="Name to use when saving the report")
 
 args = parser.parse_args()
