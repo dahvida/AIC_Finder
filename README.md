@@ -7,8 +7,8 @@ Code and scripts to employ Minimum Variance Sampling Analysis (MVS-A) to find As
 - [Datasets:](Datasets) Contains all processed datasets used in this study as .csv files.  
 - [Raw_data:](Raw_data) Contains the raw HTS assays used to generate the processed datasets for the analysis.  
 - [Scripts:](Scripts) Contains all scripts and utility functions used to reproduce the results and use the tool.  
-- [Results:](Results) Contains the performance metrics calculated by the *eval_pipeline.py* script.  
-- [Logs:](Logs) Contains the raw predictions from each approach, dataset statistics, metadata and a log of the changes from assay preprocessing.   
+- [Results:](Results) Stores AIC retrieval performance metrics.  
+- [Logs:](Logs) Stores the raw predictions from each approach, dataset statistics, metadata and a log of the changes from assay preprocessing.   
 
 ## Installation  
 All necessary packages can be installed via conda from the [environment.yml](environment.yml) file.  
