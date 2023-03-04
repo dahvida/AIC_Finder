@@ -11,7 +11,7 @@ Code and scripts to employ Minimum Variance Sampling Analysis (MVS-A) to find As
 - [Logs:](Logs) Stores the raw predictions from each approach, dataset statistics, metadata and a log of the changes from assay preprocessing.   
 
 ## Installation  
-All necessary packages can be installed via conda from the [environment.yml](environment.yml) file.  
+All necessary packages can be installed via conda from the `environment.yml` file.  
 ```
 git clone https://github.com/dahvida/AIC_finder
 conda env create --name AIC_finder --file=environment.yml
@@ -28,7 +28,7 @@ To run the analysis on all datasets saved in the [Dataset](Dataset) folder from 
 cd /AIC_finder/Scripts
 python3 eval_pipeline.py
 ```
-The script allows several optional arguments to customize the analysis. More details can be found in the documentation of [eval_pipeline.py](Scripts/eval_pipeline.py).  
+The script allows several optional arguments to customize the analysis. More details can be found in the documentation of `eval_pipeline.py`.  
 Below there is an example to run it on a single dataset, only using MVS-A and PAINS_A, without logging. Keep in mind that in order to run the analysis, the file must be saved in the [Datasets](Datasets) folder.  
 ```
 python3 eval_pipeline.py --dataset kinase.csv --catboost no --filter_type PAINS_A --run_logging no
@@ -40,7 +40,7 @@ python3 cleanup_pipeline.py --AID_1 example_1 --AID_2 example_2 --filename my_ne
 The new file will be saved in the [Results](Results) folder as .csv, while a log of all dataset changes during cleanup will automatically appear in [Logs/cleanup](Logs/cleanup). Some example outputs are already present in that folder.  
 
 ### Jupyter notebook
-MVS-A can also be easily used from a jupyter notebook. More details can be found in the documentation of [MVS_A.py](Scripts/MVS_A.py).  
+MVS-A can also be easily used from a jupyter notebook. More details can be found in the documentation of `MVS_A.py`.  
  Here is an example on how to use it:  
 ```python
 #import packages
