@@ -78,6 +78,9 @@ def main(
     #get labels
     act_1 = list(t1["PUBCHEM_ACTIVITY_OUTCOME"])[lim_1:]
     act_2 = list(t2["PUBCHEM_ACTIVITY_OUTCOME"])[lim_2:]
+    
+    #get score
+    score_1 = list(t1["PUBCHEM_ACTIVITY_SCORE"])[lim_1:]
 
     #convert to mol, sanitize and store original dataset sizes
     mols_1 = [Chem.MolFromSmiles(x, sanitize=True) for x in smiles_1]
@@ -91,6 +94,7 @@ def main(
     idx = [x for x in list(range(len(mols_1))) if mols_1[x] is not None]
     mols_1 = [mols_1[x] for x in idx]
     act_1 = [act_1[x] for x in idx]
+    score_1 = [score_1[x] for x in idx]
     idx = [x for x in list(range(len(mols_2))) if mols_2[x] is not None]
     mols_2 = [mols_2[x] for x in idx]
     act_2 = [act_2[x] for x in idx]
@@ -112,7 +116,7 @@ def main(
     act_2[idx] = 1
 
     #remove duplicates by aggregating according to consensus
-    db_1 = pd.DataFrame({"SMILES": smiles_1, "Primary":act_1})   
+    db_1 = pd.DataFrame({"SMILES": smiles_1, "Primary":act_1, "Score":score_1})   
     db_1 = db_1.groupby(["SMILES"], as_index=False).mean()
     db_1["Primary"] = db_1["Primary"].apply(f_1)
     db_2 = pd.DataFrame({"SMILES": smiles_2, "Confirmatory":act_2})   

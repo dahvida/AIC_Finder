@@ -30,6 +30,9 @@ parser.add_argument('--mvs_a', default="yes",
 parser.add_argument('--catboost', default="yes",
                     help="Whether to use CatBoost for the run, options: [yes, no]")
 
+parser.add_argument('--score', default="yes",
+                    help="Whether to use assay readouts for the run, options: [yes, no]")
+
 parser.add_argument('--fragment_filter', default="yes",
                     help="Whether to use a fragment filter for the run, options: [yes, no]")
 
@@ -52,6 +55,7 @@ args = parser.parse_args()
 def main(dataset,
          mvs_a,
          catboost,
+         score,
          fragment_filter,
          filter_type,
          replicates,
@@ -62,7 +66,7 @@ def main(dataset,
     if log_predictions == "no":
         log_predictions = False
     else:
-        if mvs_a == catboost == fragment_filter == "yes":
+        if mvs_a == catboost == score == fragment_filter == "yes":
             log_predictions = True
         else:
             print("[eval]: log_predictions works only if all AIC detection algorithms are enabled, setting it to False")
@@ -76,15 +80,16 @@ def main(dataset,
         dataset_names = [x[:-4] for x in dataset_names]
         
     #create boxes to store results
-    mvs_a_box = np.zeros((len(dataset_names), 10))
-    catboost_box = np.zeros((len(dataset_names), 10))
-    filter_box = np.zeros((len(dataset_names), 10))
-    
+    mvs_a_box = np.zeros((len(dataset_names), 12))
+    catboost_box = np.zeros((len(dataset_names), 12))
+    filter_box = np.zeros((len(dataset_names), 12))
+    score_box = np.zeros((len(dataset_names), 12))
+
     #print run info
     print("[eval]: Beginning eval run...")
     print("[eval]: Run parameters:")
     print(f"        dataset: {dataset_names}")
-    print(f"        algorithms: mvs_a = {mvs_a}, catboost = {catboost}, fragment_filter = {fragment_filter} with {filter_type}")
+    print(f"        algorithms: mvs_a = {mvs_a}, catboost = {catboost}, score = {score}, fragment_filter = {fragment_filter} with {filter_type}")
     print(f"        replicates: {replicates}")
     print(f"        prediction logging: {log_predictions}")
     print(f"        file identifier: {filename}")
@@ -125,13 +130,20 @@ def main(dataset,
             catboost_box = store_row(catboost_box, temp, fp_rate, tp_rate, i)
             print("[eval]: CatBoost analysis finished")            
         
+        if score == "yes":
+            print("[eval]: Running score analysis...")
+            temp, filter_log = run_score(db, mols, idx, y_p,
+                                         y_f, y_c, log_predictions)
+            score_box = store_row(score_box, temp, fp_rate, tp_rate, i)     
+            print("[eval]: Score analysis finished")
+        
         if fragment_filter == "yes":
             print("[eval]: Running filter analysis...")
             temp, filter_log = run_filter(mols, idx, filter_type, y_f, y_c,
                                         log_predictions)
             filter_box = store_row(filter_box, temp, fp_rate, tp_rate, i)
             print("[eval]: Filter analysis finished")
-        
+
         #optionally store logs (raw predictions for all compounds)
         if log_predictions is True:
             logs = pd.merge(mvs_log, cb_log, how = "inner")
@@ -142,7 +154,7 @@ def main(dataset,
             
     #save results for all algorithms as .csv files
     save_results(
-        [mvs_a_box, catboost_box, filter_box],
+        [mvs_a_box, catboost_box, score_box, filter_box],
         dataset_names,
         filename,
         filter_type
@@ -155,6 +167,7 @@ if __name__ == "__main__":
     main(dataset = args.dataset,
          mvs_a = args.mvs_a.lower(),
          catboost = args.catboost.lower(),
+         score = args.score.lower(),
          fragment_filter = args.fragment_filter.lower(),
          filter_type = args.filter_type.upper(),
          replicates = args.replicates,

@@ -147,10 +147,11 @@ def process_FP(
     opponent = np.zeros((len(y),))
     
     #find primary actives which fall outside of either threshold
-    idx_pro = np.where(scores_pos > t1)[0]
-    idx_opp = np.where(scores_pos < t2)[0]
+    idx_pro = np.where(scores_pos >= t1)[0]
+    idx_opp = np.where(scores_pos <= t2)[0]
     
-    #fill respective arrays with respective labels
+    #fill respective arrays with respective labels. in this context,
+    #proponents are samples >90%, while opponents are <10%
     proponent[idx_pos[idx_pro]] = 1
     opponent[idx_pos[idx_opp]] = 1
     
@@ -168,9 +169,9 @@ def store_row(
     """Stores i-th dataset results in performance container for X datasets
     
     Args:
-        analysis_array: (X,10) dataframe that stores results of a given
+        analysis_array: (X,12) dataframe that stores results of a given
                         algorithm for all datasets
-        dataset_array:  (1,4) array with the results of a given algorithm on
+        dataset_array:  (1,5) array with the results of a given algorithm on
                         the i-th dataset
         fp_rate:        fraction of false positives in the confirmatory dataset
         tp_rate:        fraction of true positives in the confirmatory dataset
@@ -190,8 +191,10 @@ def store_row(
     analysis_array[index, 5] = tp_rate                          #baseline TP rate
     analysis_array[index, 6] = np.mean(dataset_array[:,2])      #mean precision@90 TP
     analysis_array[index, 7] = np.std(dataset_array[:,2])       #STD precision@90 TP
-    analysis_array[index, 8] = np.mean(dataset_array[:,3])      #means scaffold diversity
-    analysis_array[index, 9] = np.std(dataset_array[:,3])       #STD scaffold diversity
+    analysis_array[index, 8] = np.mean(dataset_array[:,3])      #means FP scaffold diversity
+    analysis_array[index, 9] = np.std(dataset_array[:,3])       #STD FP scaffold diversity
+    analysis_array[index, 10] = np.mean(dataset_array[:,4])     #means TP scaffold diversity
+    analysis_array[index, 11] = np.std(dataset_array[:,4])      #STD TP scaffold diversity
     
     return analysis_array
 
@@ -206,7 +209,7 @@ def save_results(
     """Saves results from all algorithms to their respective .csv files
     
     Args:
-        results:        list (3,) containing results arrays for all algorithms.
+        results:        list (4,) containing results arrays for all algorithms.
                         In case one algorithm was not selected for the run, it
                         is stored as an empty array in this list and it will 
                         not be saved to .csv
@@ -227,12 +230,13 @@ def save_results(
                 "FP Precision@90 - mean", "FP Precision@90 - STD",
                 "TP rate",
                 "TP Precision@90 - mean", "TP Precision@90 - STD",
-                "Scaffold - mean", "Scaffold - std"
+                "FP Scaffold - mean", "FP Scaffold - std",
+                "TP Scaffold - mean", "TP Scaffold - std"
                 ]
     
     prefix = "../Results/"
     suffix = ".csv"
-    algorithm = ["mvsa_", "catboost_", "filter_" + filter_type + "_"]
+    algorithm = ["mvsa_", "catboost_", "score_", "filter_" + filter_type + "_"]
     
     for i in range(len(results)):
         if np.sum(results[i]) != 0:             #save only if array is not empty

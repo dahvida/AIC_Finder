@@ -67,6 +67,11 @@ def run_mvsa(
         ) -> Tuple[np.ndarray, pd.DataFrame]:
     """Executes MVS-A analysis on given dataset
     
+    Uses MVS-A importance scores to rank primary screen actives in terms of 
+    likelihood of being false positives or true positives. Top ranked compounds
+    are FPs, as indicated in TracIn, while bottom ranked compounds are TPs.
+    Finally, the function computes precision@90 and scaffold diversity metrics.
+
     Args:
         mols:               (M,) mol objects from primary data
         x:                  (M, 1024) ECFPs of primary screen molecules
@@ -79,13 +84,13 @@ def run_mvsa(
         log_predictions:    enables raw predictions logging
      
     Returns:
-        Tuple containing one array (1,4) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,5) with precision@90 for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """
     
     #create results containers
-    temp = np.zeros((replicates,4))
+    temp = np.zeros((replicates,5))
     logs = pd.DataFrame([])
     
     #loop analysis over replicates
@@ -116,6 +121,11 @@ def run_mvsa(
         idx_fp = np.where(flags == 1)[0]
         mols_fp = [mols[x] for x in idx_fp]
         temp[j,3] = get_scaffold_rate(mols_fp)
+
+        #get scaffold diversity for compounds that got flagged as TPs
+        idx_tp = np.where(flags_alt == 1)[0]
+        mols_tp = [mols[x] for x in idx_tp]
+        temp[j,4] = get_scaffold_rate(mols_tp)
     
     #optionally fill up logger
     if log_predictions is True:
@@ -136,6 +146,9 @@ def run_filter(
         ) -> Tuple[np.ndarray, pd.DataFrame]:
     """Executes structural alert analysis on given dataset
     
+    Uses structural alerts to mark primary hits as TPs or FPs. Then, 
+    it computes precision@90 and scaffold diversity indices. 
+    
     Args:
         mols:               (M,) mol objects from primary data
         idx:                (V,) positions of primary actives with confirmatory    
@@ -146,13 +159,13 @@ def run_filter(
         log_predictions:    enables raw predictions logging
      
     Returns:
-        Tuple containing one array (1,4) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,5) with precision@90 for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """
 
     #create results containers
-    temp = np.zeros((1,4))
+    temp = np.zeros((1,5))
     logs = pd.DataFrame([])   
 
     #get primary actives with confirmatory measurement
@@ -173,6 +186,11 @@ def run_filter(
     mols_fp = [mol_subset[x] for x in idx_fp]
     temp[0,3] = get_scaffold_rate(mols_fp)
     
+    #get scaffold diversity for compounds that got flagged as TPs
+    idx_tp = np.where(flags_alt == 1)[0]
+    mols_tp = [mol_subset[x] for x in idx_tp]
+    temp[0,4] = get_scaffold_rate(mols_tp)
+
     #optionally fill up logger
     if log_predictions is True:
         logs = run_logger(mols, idx, y_f, y_c, flags,
@@ -190,9 +208,14 @@ def run_catboost(
         y_c: np.ndarray,
         idx: List[int],
         replicates: int,
-        log_predictions = True
+        log_predictions: bool = True
         ) -> Tuple[np.ndarray, pd.DataFrame]:
     """Executes CatBoost analysis on given dataset
+
+    Uses CatBoost object importance function to rank primary screen actives
+    in terms of likelihood of being false positives or true positives. Unlike
+    for MVS-A, top ranked compounds are TPs, bottom ranked compounds FPs. Finally,
+    the function computes precision@90 and scaffold diversity metrics.
     
     Args:
         mols:               (M,) mol objects from primary data
@@ -206,13 +229,13 @@ def run_catboost(
         log_predictions:    enables raw predictions logging
      
     Returns:
-        Tuple containing one array (1,4) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,5) with precision@90 for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """
 
     #create results containers
-    temp = np.zeros((replicates,4))
+    temp = np.zeros((replicates,5))
     logs = pd.DataFrame([])
     
     #loop analysis over replicates
@@ -239,10 +262,15 @@ def run_catboost(
         temp[j,2] = precision_score(y_c, flags[idx])   
 	
         #get scaffold diversity for compounds that got flagged as FPs
-        idx_fp = np.where(flags == 1)[0]
+        idx_fp = np.where(flags_alt == 1)[0]
         mols_fp = [mols[x] for x in idx_fp]
         temp[j,3] = get_scaffold_rate(mols_fp)
-    
+        
+        #get scaffold diversity for compounds that got flagged as TPs
+        idx_tp = np.where(flags == 1)[0]
+        mols_tp = [mols[x] for x in idx_tp]
+        temp[j,4] = get_scaffold_rate(mols_tp)
+
     #optionally store logs
     if log_predictions is True:
         logs = run_logger(mols, idx, y_f, y_c, flags_alt[idx],
@@ -251,7 +279,67 @@ def run_catboost(
     return temp, logs
 
 
+def run_score(
+        df: pd.DataFrame,
+        mols: List[rdkit.Chem.rdchem.Mol],
+        idx: np.ndarray,
+        y_p: np.ndarray,
+        y_f: np.ndarray,
+        y_c: np.ndarray,
+        log_predictions: bool = True
+        ):
+   """Executes score analysis on given dataset
+   
+    Uses primary screen readouts (as sorted by Pubchem activity score) to sort
+    primary hits. Top 90% most actives are classified as true positives,
+    bottom 10% as false positives. Then, computes precision@90 and scaffold
+    diversity indices.
 
+    Args:
+        df:                 (M,4) preprocessed dataframe for given HTS pair
+        mols:               (M,) mol objects from primary data
+        idx:                (V,) positions of primary actives with confirmatory    
+                            readout 
+        y_p:                (M,) primary screen labels
+        y_f:                (V,) false positive labels (1=FP)        
+        y_c:                (V,) true positive labels (1=FP)
+        log_predictions:    enables raw predictions logging
+     
+    Returns:
+        Tuple containing one array (1,5) with precision@90 for FP and TP retrieval, 
+        scaffold diversity and training time, and one dataframe (V,5) with
+        SMILES, true labels and raw predictions
+    """
 
+    #create results containers
+    temp = np.zeros((1,5))
+    logs = pd.DataFrame([])   
+
+    #get scores
+    scores = np.array(df["Score"])
+        
+    #convert into labels
+    flags, flags_alt = process_FP(y_p, scores)
+    
+    #get precision@90 for FPs and TPs
+    temp[0,1] = precision_score(y_f, flags_alt[idx])
+    temp[0,2] = precision_score(y_c, flags[idx])
+    
+    #get diversity for FPs
+    idx_fp = np.where(flags_alt == 1)[0]
+    mols_fp = [mols[x] for x in idx_fp]
+    temp[0,3] = get_scaffold_rate(mols_fp)
+    
+    #get diversity for TPs
+    idx_tp = np.where(flags == 1)[0]
+    mols_tp = [mols[x] for x in idx_tp]
+    temp[0,4] = get_scaffold_rate(mols_tp)
+
+    #optionally fill up logger
+    if log_predictions is True:
+        logs = run_logger(mols, idx, y_f, y_c, flags_alt[idx],
+                                flags[idx], "score")
+            
+    return temp, logs  
 
 
