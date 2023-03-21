@@ -72,9 +72,9 @@ def get_scaffold_rate(
     return rate
     
 #-----------------------------------------------------------------------------#
-    
+   
 def get_labels(
-        dataframe: pd.DataFrame
+        dataframe: pd.DataFrame,
         ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List]:
     """Fetches all necessary labels for AIC analysis
     
@@ -97,10 +97,10 @@ def get_labels(
 
     #get slice with compounds with confirmatory measurement
     selected_rows = dataframe[~dataframe['Confirmatory'].isnull()]
-
+    
     #further cut slice to select only compounds that were primary actives
     selected_rows = selected_rows.loc[selected_rows['Primary'] == 1]
-
+    
     #confirmatory readout becomes TP vector (primary matches confirmatory)
     y_c = np.array(selected_rows["Confirmatory"])
 
@@ -114,10 +114,10 @@ def get_labels(
 
 #-----------------------------------------------------------------------------#
 
-def process_FP(
+def process_ranking(
         y: np.ndarray,
         vals_box: List[float],
-        percentile:int = 90
+        percentile: int = 90
         ) -> Tuple[np.ndarray, np.ndarray]:
     """Converts raw importance scores in binary predictions using percentiles
     
@@ -129,7 +129,8 @@ def process_FP(
     Returns:
         A tuple containing two arrays (M,) with labels indicating whether
         compounds are TPs or FPs according to the importances predicted by
-        the ML model
+        the ML model. First element of the tuple are the indexes of compounds
+        who have a score >90%, the second element are the ones <10%.
     """
 
     #select importance scores from primary actives
@@ -223,7 +224,7 @@ def save_results(
     Returns:
         None
     """
-
+    
     column_names = [
                 "Time - mean", "Time - STD",
                 "FP rate",
@@ -241,12 +242,12 @@ def save_results(
     for i in range(len(results)):
         if np.sum(results[i]) != 0:             #save only if array is not empty
             db = pd.DataFrame(
-                data = results[i],
-                index = dataset_names,
-                columns = column_names
-                )
+                    data = results[i],
+                    index = dataset_names,
+                    columns = column_names
+                    )
             db.to_csv(prefix + algorithm[i] + filename + suffix)
-    
+
 
     
 

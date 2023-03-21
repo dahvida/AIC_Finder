@@ -111,7 +111,7 @@ def run_mvsa(
         temp[j,0] = time.time() - start
         
         #convert importances into labels (top 90% -> FP, bottom 10% -> TP)
-        flags, flags_alt = process_FP(y_p, vals)
+        flags, flags_alt = process_ranking(y_p, vals)
 
         #get precision@90 for FP and TP retrieval
         temp[j,1] = precision_score(y_f, flags[idx])
@@ -255,7 +255,7 @@ def run_catboost(
         #scores (bottom 10% -> FP, top 90% TP)
         vals = np.empty((y_p.shape[0]))
         vals[idx_cat] = scores
-        flags, flags_alt = process_FP(y_p, vals)
+        flags, flags_alt = process_ranking(y_p, vals)
 
         #get precision@90 for FP and TP retrieval
         temp[j,1] = precision_score(y_f, flags_alt[idx])
@@ -278,58 +278,37 @@ def run_catboost(
     
     return temp, logs
 
+#-----------------------------------------------------------------------------#
 
 def run_score(
-        df: pd.DataFrame,
-        mols: List[rdkit.Chem.rdchem.Mol],
-        idx: np.ndarray,
-        y_p: np.ndarray,
-        y_f: np.ndarray,
-        y_c: np.ndarray,
-        log_predictions: bool = True
-        ):
-   """Executes score analysis on given dataset
-   
-    Uses primary screen readouts (as sorted by Pubchem activity score) to sort
-    primary hits. Top 90% most actives are classified as true positives,
-    bottom 10% as false positives. Then, computes precision@90 and scaffold
-    diversity indices.
-
-    Args:
-        df:                 (M,4) preprocessed dataframe for given HTS pair
-        mols:               (M,) mol objects from primary data
-        idx:                (V,) positions of primary actives with confirmatory    
-                            readout 
-        y_p:                (M,) primary screen labels
-        y_f:                (V,) false positive labels (1=FP)        
-        y_c:                (V,) true positive labels (1=FP)
-        log_predictions:    enables raw predictions logging
-     
-    Returns:
-        Tuple containing one array (1,5) with precision@90 for FP and TP retrieval, 
-        scaffold diversity and training time, and one dataframe (V,5) with
-        SMILES, true labels and raw predictions
-    """
-
+    df: pd.DataFrame,
+    mols: List[rdkit.Chem.rdchem.Mol],
+    idx: np.ndarray,
+    y_p: np.ndarray,
+    y_f: np.ndarray,
+    y_c: np.ndarray,
+    log_predictions: bool = True
+    ) -> Tuple[np.ndarray, pd.DataFrame]:
+    
     #create results containers
     temp = np.zeros((1,5))
-    logs = pd.DataFrame([])   
-
+    logs = pd.DataFrame([])
+    
     #get scores
     scores = np.array(df["Score"])
+            
+    #convert into labels (top 90% -> TP, bottom 10% -> FP)
+    flags, flags_alt = process_ranking(y_p, scores)
         
-    #convert into labels
-    flags, flags_alt = process_FP(y_p, scores)
-    
     #get precision@90 for FPs and TPs
     temp[0,1] = precision_score(y_f, flags_alt[idx])
     temp[0,2] = precision_score(y_c, flags[idx])
-    
+        
     #get diversity for FPs
     idx_fp = np.where(flags_alt == 1)[0]
     mols_fp = [mols[x] for x in idx_fp]
     temp[0,3] = get_scaffold_rate(mols_fp)
-    
+        
     #get diversity for TPs
     idx_tp = np.where(flags == 1)[0]
     mols_tp = [mols[x] for x in idx_tp]
@@ -338,8 +317,8 @@ def run_score(
     #optionally fill up logger
     if log_predictions is True:
         logs = run_logger(mols, idx, y_f, y_c, flags_alt[idx],
-                                flags[idx], "score")
-            
+                                    flags[idx], "score")
+                
     return temp, logs  
 
 

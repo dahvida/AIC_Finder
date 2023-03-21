@@ -2,6 +2,21 @@
 
 Pipeline to merge and preprocess a pair of primary-confirmatory assays into a
 single .csv file that can be used for downstream analysis.
+The assays must be present in the ../Raw_data folder, simply download the 
+respective datatables from PubChem and copy-paste them there.
+
+User must specify the primary HTS as --AID_1 and confirmatory HTS as --AID_2,
+filename is set to "output" by default.
+
+Steps:
+    1. Load both assays
+    2. Remove rows that do not contain SMILES
+    3. Get activity labels (indicated by "PUBCHEM_ACTIVITY_OUTCOME") and
+    activity scores (indicated by "PUBCHEM_ACTIVITY_SCORE")
+    4. Sanitize with RDKIT, remove SMILES that failed parsing and remove
+       salts / neutralize via ChEMBL structure pipeline tool
+    5. Merge measurements for compounds that were measured multiple times
+    6. Merge primary and confirmatory assays and save as .csv in ../Datasets
 """
 
 import pandas as pd
