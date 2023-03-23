@@ -1,18 +1,18 @@
-Codename,Source publication ID,Primary AID,Confirmatory AID,Target
-GPCR,PMC5962024,485270,492964,Orexin1
-GPCR_2,PMC5962024,1040,1254,NPY-Y1 receptor
-GPCR_3,PMC5962024,628,677,M1 Muscarinic Receptor antagonists
-ion_channel,PMC5962024,1672,2032,Potassium Ion Channel Kir2.1
-ion_channel_2,PMC5962024,449739,489005,Cav3 T-type calcium channel
-ion_channel_3,PMC5962024,2239,2287,KCNQ2
-kinase,PMC5962024,2661,2821,Serine/Threonine Kinase 33
-transporter,PMC5962024,488975,493221,Choline transporter
-transcription,10.26434/chemrxiv-2022-cb3tz,504558,588343,NF-kB Epstein-Barr
-transcription_2,10.26434/chemrxiv-2022-cb3tz,2098,2382,HSF1
-transcription_3,10.26434/chemrxiv-2022-cb3tz,624304,624474,SKN-1
-ubiquitin,10.26434/chemrxiv-2022-cb3tz,485273,493155,UBC13
-serine,10.26434/chemrxiv-2022-cb3tz,873,1431,Human Kallikrein 5
-splicing,10.26434/chemrxiv-2022-cb3tz,2221,435010,RecA intein
-channel_atp,10.26434/chemrxiv-2022-cb3tz,720511,743267,CFTR
-cysteine_protease,10.26434/chemrxiv-2022-cb3tz,686996,720632,Caspase 6
-zinc_finger,10.26434/chemrxiv-2022-cb3tz,1832,1960,zinc finger protein mex-5
+Codename,UniProt ID,Primary  HTS AID,Primary HTS measurement,Confirmatory HTS AID,Confirmatory HTS measurement,Confirmatory HTS cutoff,Source publication ID
+GPCR,O43613,485270,Inhibition at 6.6 uM,492964,2 Replicates,46.00%,PMC5962024
+GPCR_2,P25929 ,1040,Inhibition at 3.6 uM,1254,2 Replicates,20.00%,PMC5962024
+GPCR_3,P08482,628,B score at 10 uM,677,2 Replicates,3SD,PMC5962024
+ion_channel,P35561,1672,B score at 10 uM,2032,2 Replicates,3SD,PMC5962024
+ion_channel_2,O95180,449739,B score at 10 uM,489005,EC50,Failed fit,PMC5962024
+ion_channel_3,O88943,2239,B score at 10 uM,2287,2 Replicates,3SD,PMC5962024
+kinase,Q9BYT3,2661,Inhibition at 10 uM,2821,EC50,100 uM or failed fit,PMC5962024
+transporter,Q9GZV3,488975,B score at 10 uM,493221,2 Replicates,3SD,PMC5962024
+transcription,CAD53472,504558,Activity at 12.5 uM,588343,AC50,350 uM or failed fit,10.26434/chemrxiv-2022-cb3tz
+transcription_2,AAH94064,2098,Activity at 2.5 uM,2382,EC50,195 uM or failed fit,10.26434/chemrxiv-2022-cb3tz
+transcription_3,P34707,624304,Inhibition at 21.8 uM,624474,IC50,"Equation (pIC50, QC)",10.26434/chemrxiv-2022-cb3tz
+ubiquitin,P61088,485273,Inhibition at 20 uM,493155,IC50,"Equation (pIC50, QC)",10.26434/chemrxiv-2022-cb3tz
+serine,Q9Y337,873,Inhibition at 5 uM,1431,IC50,50 uM or failed fit,10.26434/chemrxiv-2022-cb3tz
+splicing,P9WHJ3,2221,Activity at 7.5 nM,435010,EC50,380 uM or failed fit,10.26434/chemrxiv-2022-cb3tz
+channel_atp,P13569,720511,Activity at 7.5 uM,743267,AC50,100 uM or failed fit,10.26434/chemrxiv-2022-cb3tz
+cysteine_protease,P55212,686996,Activity at 12.5 uM,720632,AC50,70 uM or failed fit,10.26434/chemrxiv-2022-cb3tz
+zinc_finger,Q9XUB2,1832,Activity at 10 uM,1960,EC50,300 uM or failed fit,10.26434/chemrxiv-2022-cb3tz

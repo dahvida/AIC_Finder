@@ -20,6 +20,7 @@ def run_logger(
         y_c: np.ndarray,
         flags: np.ndarray,
         flags_alt: np.ndarray,
+        score: np.ndarray,
         algorithm: str
         ) -> pd.DataFrame:
     """Logs raw predictions for a given algorithm
@@ -48,7 +49,8 @@ def run_logger(
         "False positives": y_f,
         "True positives": y_c,
         "FP - " + algorithm: flags,
-        "TP - " + algorithm: flags_alt
+        "TP - " + algorithm: flags_alt,
+        "Score - " + algorithm: score
         })
 
     return db
@@ -70,7 +72,8 @@ def run_mvsa(
     Uses MVS-A importance scores to rank primary screen actives in terms of 
     likelihood of being false positives or true positives. Top ranked compounds
     are FPs, as indicated in TracIn, while bottom ranked compounds are TPs.
-    Finally, the function computes precision@90 and scaffold diversity metrics.
+    Finally, the function computes precision@90, EF10, BEDROC20
+    and scaffold diversity metrics.
 
     Args:
         mols:               (M,) mol objects from primary data
@@ -84,13 +87,13 @@ def run_mvsa(
         log_predictions:    enables raw predictions logging
      
     Returns:
-        Tuple containing one array (1,5) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """
     
     #create results containers
-    temp = np.zeros((replicates,5))
+    temp = np.zeros((replicates,9))
     logs = pd.DataFrame([])
     
     #loop analysis over replicates
@@ -117,20 +120,28 @@ def run_mvsa(
         temp[j,1] = precision_score(y_f, flags[idx])
         temp[j,2] = precision_score(y_c, flags_alt[idx])
         
+        #get EF10 for FPs and TPs
+        temp[j,3] = enrichment_factor_score(y_f, flags[idx])
+        temp[j,4] = enrichment_factor_score(y_c, flags_alt[idx])
+
+        #get BEDROC20 for FPs and TPs
+        temp[j,5] = bedroc_score(y_f, vals[idx], reverse=True)
+        temp[j,6] = bedroc_score(y_c, vals[idx], reverse=False)	 
+        
         #get scaffold diversity for compounds that got flagged as FPs
         idx_fp = np.where(flags == 1)[0]
         mols_fp = [mols[x] for x in idx_fp]
-        temp[j,3] = get_scaffold_rate(mols_fp)
+        temp[j,7] = get_scaffold_rate(mols_fp)
 
         #get scaffold diversity for compounds that got flagged as TPs
         idx_tp = np.where(flags_alt == 1)[0]
         mols_tp = [mols[x] for x in idx_tp]
-        temp[j,4] = get_scaffold_rate(mols_tp)
+        temp[j,8] = get_scaffold_rate(mols_tp)
     
     #optionally fill up logger
     if log_predictions is True:
         logs = run_logger(mols, idx, y_f, y_c, flags[idx],
-                                flags_alt[idx], "mvsa")
+                                flags_alt[idx], vals[idx], "mvsa")
 
     return temp, logs
     
@@ -147,7 +158,7 @@ def run_filter(
     """Executes structural alert analysis on given dataset
     
     Uses structural alerts to mark primary hits as TPs or FPs. Then, 
-    it computes precision@90 and scaffold diversity indices. 
+    it computes precision@90, EF10, BEDROC20 and scaffold diversity indices. 
     
     Args:
         mols:               (M,) mol objects from primary data
@@ -159,13 +170,13 @@ def run_filter(
         log_predictions:    enables raw predictions logging
      
     Returns:
-        Tuple containing one array (1,5) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """
 
     #create results containers
-    temp = np.zeros((1,5))
+    temp = np.zeros((1,9))
     logs = pd.DataFrame([])   
 
     #get primary actives with confirmatory measurement
@@ -180,21 +191,29 @@ def run_filter(
     #invert filter flagging to find TPs and measure precision
     flags_alt = (flags - 1) * -1
     temp[0,2] = precision_score(y_c, flags_alt)
-            
+    
+    #get EF10 for FPs and TPs
+    temp[0,3] = enrichment_factor_score(y_f, flags)
+    temp[0,4] = enrichment_factor_score(y_c, flags_alt)
+
+    #get BEDROC20 for FPs and TPs
+    temp[0,5] = bedroc_score(y_f, flags, reverse=True)
+    temp[0,6] = bedroc_score(y_c, flags_alt, reverse=True)	
+
     #get scaffold diversity for compounds that got flagged as FPs
     idx_fp = np.where(flags == 1)[0]
     mols_fp = [mol_subset[x] for x in idx_fp]
-    temp[0,3] = get_scaffold_rate(mols_fp)
+    temp[0,7] = get_scaffold_rate(mols_fp)
     
     #get scaffold diversity for compounds that got flagged as TPs
     idx_tp = np.where(flags_alt == 1)[0]
     mols_tp = [mol_subset[x] for x in idx_tp]
-    temp[0,4] = get_scaffold_rate(mols_tp)
+    temp[0,8] = get_scaffold_rate(mols_tp)
 
     #optionally fill up logger
     if log_predictions is True:
         logs = run_logger(mols, idx, y_f, y_c, flags,
-                                flags_alt, "filter")
+                                flags_alt, flags, "filter")
             
     return temp, logs  
     
@@ -215,7 +234,7 @@ def run_catboost(
     Uses CatBoost object importance function to rank primary screen actives
     in terms of likelihood of being false positives or true positives. Unlike
     for MVS-A, top ranked compounds are TPs, bottom ranked compounds FPs. Finally,
-    the function computes precision@90 and scaffold diversity metrics.
+    the function computes precision@90, EF10, BEDROC20 and scaffold diversity metrics.
     
     Args:
         mols:               (M,) mol objects from primary data
@@ -229,13 +248,13 @@ def run_catboost(
         log_predictions:    enables raw predictions logging
      
     Returns:
-        Tuple containing one array (1,5) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """
 
     #create results containers
-    temp = np.zeros((replicates,5))
+    temp = np.zeros((replicates,9))
     logs = pd.DataFrame([])
     
     #loop analysis over replicates
@@ -260,21 +279,29 @@ def run_catboost(
         #get precision@90 for FP and TP retrieval
         temp[j,1] = precision_score(y_f, flags_alt[idx])
         temp[j,2] = precision_score(y_c, flags[idx])   
-	
+    
+        #get EF10 for FPs and TPs
+        temp[j,3] = enrichment_factor_score(y_f, flags_alt[idx])
+        temp[j,4] = enrichment_factor_score(y_c, flags[idx])
+
+        #get BEDROC20 for FPs and TPs
+        temp[j,5] = bedroc_score(y_f, vals[idx], reverse=False)
+        temp[j,6] = bedroc_score(y_c, vals[idx], reverse=True)	
+        
         #get scaffold diversity for compounds that got flagged as FPs
         idx_fp = np.where(flags_alt == 1)[0]
         mols_fp = [mols[x] for x in idx_fp]
-        temp[j,3] = get_scaffold_rate(mols_fp)
+        temp[j,7] = get_scaffold_rate(mols_fp)
         
         #get scaffold diversity for compounds that got flagged as TPs
         idx_tp = np.where(flags == 1)[0]
         mols_tp = [mols[x] for x in idx_tp]
-        temp[j,4] = get_scaffold_rate(mols_tp)
+        temp[j,8] = get_scaffold_rate(mols_tp)
 
     #optionally store logs
     if log_predictions is True:
         logs = run_logger(mols, idx, y_f, y_c, flags_alt[idx],
-                                flags[idx], "catboost")
+                                flags[idx], vals[idx], "catboost")
     
     return temp, logs
 
@@ -289,9 +316,32 @@ def run_score(
     y_c: np.ndarray,
     log_predictions: bool = True
     ) -> Tuple[np.ndarray, pd.DataFrame]:
+    """Executes Score analysis on given dataset
+
+    Uses raw primary screen scores (as indicated in PUBCHEM_ACTIVITY_SCORE) to 
+    rank primary screen actives in terms of likelihood of being false positives 
+    or true positives. Top ranked compounds (most active primaries) are TPs, 
+    bottom ranked compounds FPs. Finally, the function computes precision@90, 
+    EF10, BEDROC20 and scaffold diversity metrics.
     
+    Args:
+        mols:               (M,) mol objects from primary data
+        x:                  (M, 1024) ECFPs of primary screen molecules
+        y_p:                (M,) primary screen labels
+        y_f:                (V,) false positive labels (1=FP)        
+        y_c:                (V,) true positive labels (1=FP)
+        idx:                (V,) positions of primary actives with confirmatory    
+                            readout  
+        replicates:         number of replicates to use for the run
+        log_predictions:    enables raw predictions logging
+     
+    Returns:
+        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
+        scaffold diversity and training time, and one dataframe (V,5) with
+        SMILES, true labels and raw predictions
+    """ 
     #create results containers
-    temp = np.zeros((1,5))
+    temp = np.zeros((1,9))
     logs = pd.DataFrame([])
     
     #get scores
@@ -303,21 +353,29 @@ def run_score(
     #get precision@90 for FPs and TPs
     temp[0,1] = precision_score(y_f, flags_alt[idx])
     temp[0,2] = precision_score(y_c, flags[idx])
-        
+    
+    #get EF10 for FPs and TPs
+    temp[0,3] = enrichment_factor_score(y_f, flags_alt[idx])
+    temp[0,4] = enrichment_factor_score(y_c, flags[idx])
+
+    #get BEDROC20 for FPs and TPs
+    temp[0,5] = bedroc_score(y_f, scores[idx], reverse=False)
+    temp[0,6] = bedroc_score(y_c, scores[idx], reverse=True)
+    
     #get diversity for FPs
     idx_fp = np.where(flags_alt == 1)[0]
     mols_fp = [mols[x] for x in idx_fp]
-    temp[0,3] = get_scaffold_rate(mols_fp)
+    temp[0,7] = get_scaffold_rate(mols_fp)
         
     #get diversity for TPs
     idx_tp = np.where(flags == 1)[0]
     mols_tp = [mols[x] for x in idx_tp]
-    temp[0,4] = get_scaffold_rate(mols_tp)
+    temp[0,8] = get_scaffold_rate(mols_tp)
 
     #optionally fill up logger
     if log_predictions is True:
         logs = run_logger(mols, idx, y_f, y_c, flags_alt[idx],
-                                    flags[idx], "score")
+                                    flags[idx], scores[idx], "score")
                 
     return temp, logs  
 

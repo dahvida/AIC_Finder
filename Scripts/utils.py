@@ -4,6 +4,7 @@ import rdkit
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 from rdkit.Chem.Scaffolds import MurckoScaffold
+from rdkit.ML.Scoring.Scoring import CalcBEDROC
 import pandas as pd
 
 ###############################################################################
@@ -160,6 +161,46 @@ def process_ranking(
 
 #-----------------------------------------------------------------------------#
 
+def enrichment_factor_score(
+        y_true: np.ndarray,
+        y_pred: np.ndarray
+        ) -> float:
+    """
+    Function to compute Enrichment Factor using precomputed binary labels
+    according to the threshold set in process_ranking
+    """
+    compounds_at_k = np.sum(y_pred)
+    total_compounds = len(y_true)
+    total_actives = np.sum(y_true)
+    tp_at_k = len(np.where(y_true + y_pred == 2)[0])
+
+    return (tp_at_k / compounds_at_k) * (total_actives / total_compounds)
+
+#-----------------------------------------------------------------------------#
+
+def bedroc_score(
+        y_true: np.ndarray,
+        y_pred: np.ndarray,
+        reverse: bool = True
+        ) -> float:
+    """
+    Function to compute BEDROC score from raw rankings, using alpha=20 as
+    default. Adapted from https://github.com/deepchem
+    """
+    
+    y_true = y_true.flatten()
+    y_pred = y_pred.flatten()
+    scores = list(zip(y_true, y_pred))
+    scores = sorted(scores, key=lambda pair: pair[1], reverse=reverse)
+    
+    output = CalcBEDROC(scores = scores,
+                        col = 0,
+                        alpha = 20)
+
+    return output
+
+#-----------------------------------------------------------------------------#
+
 def store_row(
         analysis_array: np.ndarray,
         dataset_array: np.ndarray,
@@ -170,9 +211,9 @@ def store_row(
     """Stores i-th dataset results in performance container for X datasets
     
     Args:
-        analysis_array: (X,12) dataframe that stores results of a given
+        analysis_array: (X,20) dataframe that stores results of a given
                         algorithm for all datasets
-        dataset_array:  (1,5) array with the results of a given algorithm on
+        dataset_array:  (1,9) array with the results of a given algorithm on
                         the i-th dataset
         fp_rate:        fraction of false positives in the confirmatory dataset
         tp_rate:        fraction of true positives in the confirmatory dataset
@@ -186,16 +227,32 @@ def store_row(
 
     analysis_array[index, 0] = np.mean(dataset_array[:,0])      #mean training time
     analysis_array[index, 1] = np.std(dataset_array[:,0])       #STD training time
+
     analysis_array[index, 2] = fp_rate                          #baseline FP rate
     analysis_array[index, 3] = np.mean(dataset_array[:,1])      #mean precision@90 FP
     analysis_array[index, 4] = np.std(dataset_array[:,1])       #STD precision@90 FP
+    
     analysis_array[index, 5] = tp_rate                          #baseline TP rate
     analysis_array[index, 6] = np.mean(dataset_array[:,2])      #mean precision@90 TP
     analysis_array[index, 7] = np.std(dataset_array[:,2])       #STD precision@90 TP
-    analysis_array[index, 8] = np.mean(dataset_array[:,3])      #means FP scaffold diversity
-    analysis_array[index, 9] = np.std(dataset_array[:,3])       #STD FP scaffold diversity
-    analysis_array[index, 10] = np.mean(dataset_array[:,4])     #means TP scaffold diversity
-    analysis_array[index, 11] = np.std(dataset_array[:,4])      #STD TP scaffold diversity
+
+    analysis_array[index, 8] = np.mean(dataset_array[:,3])      #EF10 for FP
+    analysis_array[index, 9] = np.std(dataset_array[:,3])       #STD EF10 FP
+
+    analysis_array[index, 10] = np.mean(dataset_array[:,4])     #EF10 for TP
+    analysis_array[index, 11] = np.std(dataset_array[:,4])      #STD EF10 TP
+
+    analysis_array[index, 12] = np.mean(dataset_array[:,5])     #BEDROC20 for FP
+    analysis_array[index, 13] = np.std(dataset_array[:,5])      #STD
+
+    analysis_array[index, 14] = np.mean(dataset_array[:,6])     #BEDROC20 for TP
+    analysis_array[index, 15] = np.std(dataset_array[:,6])      #STD
+
+    analysis_array[index, 16] = np.mean(dataset_array[:,7])     #means FP scaffold diversity
+    analysis_array[index, 17] = np.std(dataset_array[:,7])      #STD FP scaffold diversity
+
+    analysis_array[index, 18] = np.mean(dataset_array[:,8])     #means TP scaffold diversity
+    analysis_array[index, 19] = np.std(dataset_array[:,8])      #STD TP scaffold diversity
     
     return analysis_array
 
@@ -231,8 +288,12 @@ def save_results(
                 "FP Precision@90 - mean", "FP Precision@90 - STD",
                 "TP rate",
                 "TP Precision@90 - mean", "TP Precision@90 - STD",
-                "FP Scaffold - mean", "FP Scaffold - std",
-                "TP Scaffold - mean", "TP Scaffold - std"
+                "FP EF10 - mean", "FP EF10 - STD",
+                "TP EF10 - mean", "TP EF10 - STD",
+                "FP BEDROC20 - mean", "FP BEDROC20 - STD",
+                "TP BEDROC20 - mean", "TP BEDROC20 - STD",
+                "FP Scaffold - mean", "FP Scaffold - STD",
+                "TP Scaffold - mean", "TP Scaffold - STD"
                 ]
     
     prefix = "../Results/"

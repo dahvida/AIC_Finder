@@ -95,10 +95,10 @@ def main(dataset,
         dataset_names = [x[:-4] for x in dataset_names]
         
     #create boxes to store results
-    mvs_a_box = np.zeros((len(dataset_names), 12))
-    catboost_box = np.zeros((len(dataset_names), 12))
-    filter_box = np.zeros((len(dataset_names), 12))
-    score_box = np.zeros((len(dataset_names), 12))
+    mvs_a_box = np.zeros((len(dataset_names), 20))
+    catboost_box = np.zeros((len(dataset_names), 20))
+    filter_box = np.zeros((len(dataset_names), 20))
+    score_box = np.zeros((len(dataset_names), 20))
 
     #print run info
     print("[eval]: Beginning eval run...")
