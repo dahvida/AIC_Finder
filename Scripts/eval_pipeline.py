@@ -8,10 +8,10 @@ script. To log predictions, all algorithms must be enabled for the run.
 
 If no flags are passed, the analysis will process all datasets in the ../Datasets
 folder, using all AIC retrieval algorithms and logging predictions. The results
-for each algorithm will be saved in an independent .csv file, i.e. "mvsa_output.csv"
+for each algorithm will be saved in an independent .csv file, i.e. "mvsa_output.csv" 
 
 Steps:
-    1. Load dataset and compute ECFPs
+    1. Load dataset and compute chosen molecular feature set
     2. Create labels for primary and confirmatory data
     3. Run MVS-A analysis and store results
     4. Run CatBoost analysis and store results
@@ -19,7 +19,7 @@ Steps:
     6. Run structural alerts analysis and store results
     7. Log predictions and save
 
-For further details regarding how each analysis is run, check evals.py
+For further details regarding how each AIC analysis is run, check evals.py
 """
 
 from utils import *
@@ -57,6 +57,9 @@ parser.add_argument('--filter_type', default="PAINS",
 parser.add_argument('--replicates', default=5, type=int,
                     help="How many replicates to use for MVS-A and CatBoost")
 
+parser.add_argument('--feature_type', default="ECFP",
+                    help="Which molecular representation to use for featurization, options: [ECFP, MACCS, 2D]")
+
 parser.add_argument('--filename', default="output",
                     help="Name to use when saving performance results")
 
@@ -74,6 +77,7 @@ def main(dataset,
          fragment_filter,
          filter_type,
          replicates,
+         feature_type,
          filename,
          log_predictions):
     
@@ -104,22 +108,33 @@ def main(dataset,
     print("[eval]: Beginning eval run...")
     print("[eval]: Run parameters:")
     print(f"        dataset: {dataset_names}")
-    print(f"        algorithms: mvs_a = {mvs_a}, catboost = {catboost}, score = {score}, fragment_filter = {fragment_filter} with {filter_type}")
+    print(f"        mvs_a: {mvs_a}")
+    print(f"        catboost: {catboost}")
+    print(f"        score: {score}")
+    print(f"        fragment_filter: {fragment_filter} with {filter_type}")
     print(f"        replicates: {replicates}")
+    print(f"        feature type: {feature_type}")
     print(f"        prediction logging: {log_predictions}")
     print(f"        file identifier: {filename}")
     
     #loop analysis over all datasets
     for i in range(len(dataset_names)):
 
-        #load i-th dataset, get mols and then ECFPs
+        #load i-th dataset, get mols
         print("----------------------")
         name = dataset_names[i]
         print(f"[eval]: Processing dataset: {name}")
         db = pd.read_csv("../Datasets/" + name + ".csv")
         mols = list(db["SMILES"])
         mols = [Chem.MolFromSmiles(x) for x in mols]
-        ecfp = get_ECFP(mols)
+
+        #compute representation
+        if feature_type == "ECFP":
+            feats = get_ECFP(mols)
+        if feature_type == "MACCS":
+            feats = get_MACCS(mols)
+        if feature_type == "2D":
+            feats = get_2D(mols)
 
         #get labels for the analysis and get random-guess probabilities for
         #FP and TP. y_p are the labels from the primary screen, y_c and
@@ -133,14 +148,14 @@ def main(dataset,
         #depending on user options, run analysis and store results
         if mvs_a == "yes":
             print("[eval]: Running MVS-A analysis...")
-            temp, mvs_log = run_mvsa(mols, ecfp, y_p, y_f, y_c, idx, replicates,
+            temp, mvs_log = run_mvsa(mols, feats, y_p, y_f, y_c, idx, replicates,
                                     log_predictions)
             mvs_a_box = store_row(mvs_a_box, temp, fp_rate, tp_rate, i)
             print("[eval]: MVS-A analysis finished")
 
         if catboost == "yes":
             print("[eval]: Running CatBoost analysis...")
-            temp, cb_log = run_catboost(mols, ecfp, y_p, y_f, y_c, idx, replicates,
+            temp, cb_log = run_catboost(mols, feats, y_p, y_f, y_c, idx, replicates,
                                         log_predictions)
             catboost_box = store_row(catboost_box, temp, fp_rate, tp_rate, i)
             print("[eval]: CatBoost analysis finished")            
@@ -187,6 +202,7 @@ if __name__ == "__main__":
          fragment_filter = args.fragment_filter.lower(),
          filter_type = args.filter_type.upper(),
          replicates = args.replicates,
+         feature_type = args.feature_type.upper(),
          filename = args.filename,
          log_predictions = args.log_predictions)
 

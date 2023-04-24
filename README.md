@@ -9,6 +9,7 @@ Code and scripts to employ Minimum Variance Sampling Analysis (MVS-A) to find As
 - [Scripts:](Scripts) Contains all scripts and utility functions used to reproduce the results and use the tool.  
 - [Results:](Results) Stores AIC retrieval performance metrics.  
 - [Logs:](Logs) Stores the raw predictions from each approach, dataset statistics, metadata and a log of the changes from assay preprocessing.   
+- [Misc:](Misc) Contains the external datasets (compressed as .zip) used to evaluate how many of the false positives found by MVS-A are due to autofluorescence, aggregation or being frequent hitters.  
 
 ## Installation  
 All necessary packages can be installed via conda from the `environment.yml` file.  
@@ -31,7 +32,7 @@ python3 eval_pipeline.py
 The script allows several optional arguments to customize the analysis. More details can be found in the documentation of `eval_pipeline.py`.  
 Below there is an example to run it on a single dataset, only using MVS-A and PAINS_A, without logging. Keep in mind that in order to run the analysis, the file must be saved in the [Datasets](Datasets) folder.  
 ```
-python3 eval_pipeline.py --dataset kinase.csv --catboost no --filter_type PAINS_A --run_logging no
+python3 eval_pipeline.py --dataset kinase.csv --catboost no --score no --filter_type PAINS_A --run_logging no
 ```
 To generate a new dataset for the analysis, you need two datatables from PubChem, one for the primary screen and one for the confirmatory screen. Save the two .csv files in the [Raw_data](Raw_data) folder with their original name and then move to the [Scripts](Scripts) folder. Then, run the following command:  
 ```

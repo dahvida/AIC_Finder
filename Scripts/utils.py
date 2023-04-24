@@ -2,7 +2,8 @@ from typing import *
 import numpy as np
 import rdkit
 from rdkit import Chem, DataStructs
-from rdkit.Chem import AllChem
+from rdkit.Chem import AllChem, MACCSkeys, Descriptors
+from rdkit.ML.Descriptors import MoleculeDescriptors
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit.ML.Scoring.Scoring import CalcBEDROC
 import pandas as pd
@@ -33,7 +34,71 @@ def get_ECFP(
     #store each element in list into array via cython
     for i in range(len(array)):
         DataStructs.ConvertToNumpyArray(fps[i], array[i])
+
     return array
+
+#-----------------------------------------------------------------------------#
+
+def get_MACCS(
+	mols: List[rdkit.Chem.rdchem.Mol]
+	) -> np.ndarray:
+    """Calculates MACCS keys for a given set of molecules
+
+    Args:
+        mols:   (M,) mols to compute MACCS for
+
+    Returns:
+        array (M, 167) of MACCS keys
+    """
+    #prealloc
+    array = np.empty((len(mols), 167), dtype=np.float32) 
+
+    #get MACCS keys
+    fps = [MACCSkeys.GenMACCSKeys(x) for x in mols]
+
+    #store each element in list into array via cython
+    for i in range(len(array)):
+        DataStructs.ConvertToNumpyArray(fps[i], array[i])
+    
+    return array
+
+#-----------------------------------------------------------------------------#
+	
+def get_2D(
+    mols: List[rdkit.Chem.rdchem.Mol]
+    ) -> np.ndarray:
+    """Calculates a set of 2D descriptors for a given set of molecules
+
+    Args:
+        mols:   (M,) mols to compute 2D descs for
+
+    Returns:
+        array (M, 100) of 2D descriptors
+    """
+    #fetch descriptor names
+    names = [x[0] for x in Descriptors._descList]
+    
+    #select only top 100 for calculation speed
+    names = names[:100]
+    
+    #create calculator object only for selected descs
+    calc = MoleculeDescriptors.MolecularDescriptorCalculator(names)
+
+    #prealloc array
+    descs = np.zeros((len(mols), 100))
+    
+    #loop over each molecule
+    for i in range(len(descs)):
+
+        #calc desc and store if not None
+        temp = calc.CalcDescriptors(mols[i])
+        if temp is not None:
+            descs[i,:] = temp
+    
+    #prune outliers
+    descs = np.nan_to_num(descs, posinf=10e10, neginf=-10e10)
+    
+    return descs
 
 #-----------------------------------------------------------------------------#
 
