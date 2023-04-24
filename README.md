@@ -64,7 +64,7 @@ AIC_finder.get_model()
 vals = AIC_finder.get_importance()
 
 #convert raw scores into binary labels
-true_positives, false_positives = process_FP(y_p, vals)
+true_positives, false_positives = process_ranking(y_p, vals)
 ```
 
 ## How to cite
