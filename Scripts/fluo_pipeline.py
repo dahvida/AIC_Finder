@@ -20,6 +20,7 @@ Steps:
         5.3. Calculate predictions with neural network
         5.4. Calculate overlap by dividing number of predicted fluorescent versus
              total MVS-A FPs
+        5.5. Compute false positive detection metrics
     6. Save
 """
 
@@ -33,6 +34,7 @@ import numpy as np
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import *
+from utils import *
 import warnings
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 import os
@@ -264,16 +266,18 @@ def main(
     
     #get all logged dataset names
     names = os.listdir("../Logs/eval/")
-    overlaps = np.zeros((len(names), 1))
+    output = np.zeros((len(names), 4))
     
     #loop over all logged datasets
     for i in range(len(names)):
         
         print(f"Processing dataset: {names[i]}")
 
-        #load csv and select all compounds flagged by MVS-A as FP 
+	#load csv and select all compounds flagged by MVS-A as FP 
         temp = pd.read_csv("../Logs/eval/" + names[i])
-        temp = temp.loc[temp["FP - mvsa"] == 1]
+        y = np.array(temp["False positives"])
+        idx = np.array(temp["FP - mvsa"])
+        idx = np.where(idx == 1)[0]
         smiles = list(temp["SMILES"])
         mols = [Chem.MolFromSmiles(x) for x in smiles]
 
@@ -282,28 +286,37 @@ def main(
         val = variance.transform(val)
         val = scaler.transform(val)
 
-        #get predictions and select highest fluorescence likelihood
-        #for each compound
+        #get predictions
         preds = model.predict(val)
         preds = np.max(preds, axis=1)
         
         #convert probs in labels using threshold
-        preds[preds > threshold] = 1
-        preds[preds <= threshold] = 0
+        p1 = preds[idx].copy()
+        p1[p1 > threshold] = 1
+        p1[p1 <= threshold] = 0
         
         #compute overlap
-        overlaps[i, 0] = np.sum(preds) * 100 / preds.shape[0]
-        print(f"Overlap: {overlaps[i]}")
+        output[i, 0] = np.sum(p1) * 100 / p1.shape[0]
+        
+        #compute metrics
+        p2 = preds.copy()
+        t2 = np.percentile(preds, 90)
+        p2[p2 > t2] = 1
+        p2[p2 <= t2] = 0
+        output[i,1] = precision_score(y, p2)
+        output[i,2] = enrichment_factor_score(y, p2)
+        output[i,3] = bedroc_score(y, preds, reverse=True)
+        
         print("--------------------------")
     
     #store in pandas dataframe and save
     output = pd.DataFrame(
-            data = overlaps,
+            data = output,
             index = names,
-            columns = ["Overlap %"]
+            columns = ["Overlap %", "Precision@10", "EF@10", "BEDROC"]
             )
-    output.to_csv("../Results/fluo_overlap.csv")
-    print("[fluo]: Analysis finished, file saved at ../Results/fluo_overlap.csv")
+    output.to_csv("../Results/fluo_output.csv")
+    print("[fluo]: Analysis finished, file saved at ../Results/fluo_output.csv")
 
 
 if __name__ == "__main__":

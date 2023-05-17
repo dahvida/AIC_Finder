@@ -12,12 +12,13 @@ The output will be saved as ../Results/agg_overlap.csv
 Steps:
     1. Load preprocessed aggregator dataset from ../Misc
     2. Calculate ECFPs for training set
-    3. Train multitask neural network
+    3. Train LightGBM classifier
     4. For each logged dataset:
         4.1. Load and featurize FPs predicted by MVS-A
         4.2. Calculate predictions
         4.3. Calculate overlap by dividing number of predicted aggregators versus
              total MVS-A FPs
+        4.4. Compute false positive retrieval metrics
     5. Save
 """
 
@@ -27,6 +28,7 @@ import numpy as np
 import os
 import argparse
 from utils import *
+from sklearn.metrics import precision_score
 from lightgbm import LGBMClassifier
 from chembl_structure_pipeline import standardizer
 
@@ -67,14 +69,15 @@ def main(
 
     #create LightGBM model
     clf = LGBMClassifier(n_estimators=n_estimators,
-                         learning_rate=lr)
+                         learning_rate=lr,
+                         n_jobs=20)
     clf.fit(ecfp, y)
     
     print("[agg]: Model trained")
 
     #get all logged dataset names
     names = os.listdir("../Logs/eval/")
-    overlaps = np.zeros((len(names), 1))
+    output = np.zeros((len(names), 4))
     
     #loop over all logged datasets
     for i in range(len(names)):
@@ -83,30 +86,41 @@ def main(
 
         #load csv and select all compounds flagged by MVS-A as FP 
         temp = pd.read_csv("../Logs/eval/" + names[i])
-        temp = temp.loc[temp["FP - mvsa"] == 1]
+        y = np.array(temp["False positives"])
+        idx = np.array(temp["FP - mvsa"])
+        idx = np.where(idx == 1)[0]
         smiles = list(temp["SMILES"])
         mols = [Chem.MolFromSmiles(x) for x in smiles]
 
         #compute and preprocess descriptors for new csv
         val = get_ECFP(mols)
 
-        #get predictions and select highest fluorescence likelihood
-        #for each compound
-        preds = clf.predict(val)
+        #get predictions
+        preds = clf.predict(val[idx])
+        probs = clf.predict_proba(val)[:,1]
+        threshold = np.percentile(probs, 90)
+        labs = probs.copy()
+        labs[labs > threshold] = 1
+        labs[labs <= threshold] = 0
         
         #compute overlap
-        overlaps[i, 0] = np.sum(preds) * 100 / preds.shape[0]
-        print(f"Overlap: {overlaps[i]}")
+        output[i, 0] = np.sum(preds) * 100 / preds.shape[0]
+        
+        #compute metrics
+        output[i,1] = precision_score(y, labs)
+        output[i,2] = enrichment_factor_score(y, labs)
+        output[i,3] = bedroc_score(y, probs, reverse=True)
+        
         print("--------------------------")
     
     #store in pandas dataframe and save
     output = pd.DataFrame(
-            data = overlaps,
+            data = output,
             index = names,
-            columns = ["Overlap %"]
+            columns = ["Overlap %", "Precision@10", "EF@10", "BEDROC"]
             )
-    output.to_csv("../Results/agg_overlap.csv")
-    print("[agg]: Analysis finished, file saved at ../Results/agg_overlap.csv")
+    output.to_csv("../Results/agg_output.csv")
+    print("[agg]: Analysis finished, file saved at ../Results/agg_output.csv")
 
 
 if __name__ == "__main__":
