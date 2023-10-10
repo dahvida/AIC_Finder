@@ -14,46 +14,53 @@ import rdkit
 ###############################################################################
 
 def run_logger(
-        mols: List[rdkit.Chem.rdchem.Mol],
-        idx: List[int],
-        y_f: np.ndarray,
-        y_c: np.ndarray,
-        flags: np.ndarray,
-        flags_alt: np.ndarray,
-        score: np.ndarray,
-        algorithm: str
-        ) -> pd.DataFrame:
+        mols,
+        y_f,
+        y_c,
+        fp_box,
+        tp_box,
+        replicates) -> pd.DataFrame:
     """Logs raw predictions for a given algorithm
 
     Args:
         mols:       (M,) mol objects from primary data
-        idx:        (V,) positions of primary actives with confirmatory
-                    readout
         y_f:        (V,) false positive labels (1=FP)
         y_c:        (V,) true positive labels (1=FP)
-        flags:      (V,) FP predictions
-        flags_alt:  (V,) TP predictions
-        algorithm:  name of the algorithm for FP/TP detection
+        fp_box:     (V,) FP predictions across all replicates
+        tp_box:     (V,) TP predictions across all replicates
+        replicates: number of replicates
     
     Returns:
-        Dataframe (V,5) containing SMILES, true labels and raw predictions
+        Dataframe (V, 3 + 2*replicates) containing SMILES, true labels and
+        raw predictions
     """
-    
+
     #get primary actives with confirmatory measurement
-    mols_subset = [mols[x] for x in idx]
+    smiles = [Chem.MolToSmiles(x) for x in mols]
 
-    #store results in db
-    smiles = [Chem.MolToSmiles(x) for x in mols_subset]
-    db = pd.DataFrame({
-        "SMILES": smiles,
-        "False positives": y_f,
-        "True positives": y_c,
-        "FP - " + algorithm: flags,
-        "TP - " + algorithm: flags_alt,
-        "Score - " + algorithm: score
-        })
+    fp_labs = [str(x) + "FP" for x in range(replicates)]
+    tp_labs = [str(x) + "TP" for x in range(replicates)]
 
-    return db
+    fp_arr = y_f.reshape(-1,1)
+    tp_arr = y_c.reshape(-1,1)
+    for i in range(replicates):
+        fp_arr = np.concatenate((fp_arr, fp_box[i].reshape(-1,1)), axis=1)
+        tp_arr = np.concatenate((tp_arr, tp_box[i].reshape(-1,1)), axis=1)
+    
+    fp_db = pd.DataFrame(
+            data = fp_arr,
+            index = smiles,
+            columns = ["FP"] + fp_labs
+            )
+    tp_db = pd.DataFrame(
+            data = tp_arr,
+            index = smiles,
+            columns = ["TP"] + tp_labs
+            )
+    
+    final = pd.concat([fp_db, tp_db], axis=1)
+
+    return final
 
 #-----------------------------------------------------------------------------#
 
@@ -65,7 +72,6 @@ def run_mvsa(
         y_c: np.ndarray,
         idx: List[int],
         replicates: int,
-        log_predictions: bool = True
         ) -> Tuple[np.ndarray, pd.DataFrame]:
     """Executes MVS-A analysis on given dataset
     
@@ -84,7 +90,6 @@ def run_mvsa(
         idx:                (V,) positions of primary actives with confirmatory    
                             readout  
         replicates:         number of replicates to use for the run
-        log_predictions:    enables raw predictions logging
      
     Returns:
         Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
@@ -94,7 +99,8 @@ def run_mvsa(
     
     #create results containers
     temp = np.zeros((replicates,9))
-    logs = pd.DataFrame([])
+    fp_box = []
+    tp_box = []
     
     #loop analysis over replicates
     for j in range(replicates):
@@ -137,11 +143,15 @@ def run_mvsa(
         idx_tp = np.where(flags_alt == 1)[0]
         mols_tp = [mols[x] for x in idx_tp]
         temp[j,8] = get_scaffold_rate(mols_tp)
-    
-    #optionally fill up logger
-    if log_predictions is True:
-        logs = run_logger(mols, idx, y_f, y_c, flags[idx],
-                                flags_alt[idx], vals[idx], "mvsa")
+        
+        #append raw predictions
+        fp_box.append(flags[idx])
+        tp_box.append(flags_alt[idx])
+
+    #create logger dataframe
+    mols_subset = [mols[x] for x in idx]
+    logs = run_logger(mols_subset, y_f, y_c,
+                          fp_box, tp_box, replicates)
 
     return temp, logs
     
@@ -167,7 +177,6 @@ def run_filter(
         filter_type:        name of the structural alerts class to use                   
         y_f:                (V,) false positive labels (1=FP)        
         y_c:                (V,) true positive labels (1=FP)
-        log_predictions:    enables raw predictions logging
      
     Returns:
         Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
@@ -177,7 +186,6 @@ def run_filter(
 
     #create results containers
     temp = np.zeros((1,9))
-    logs = pd.DataFrame([])   
 
     #get primary actives with confirmatory measurement
     mol_subset = [mols[x] for x in idx]
@@ -210,10 +218,13 @@ def run_filter(
     mols_tp = [mol_subset[x] for x in idx_tp]
     temp[0,8] = get_scaffold_rate(mols_tp)
 
-    #optionally fill up logger
-    if log_predictions is True:
-        logs = run_logger(mols, idx, y_f, y_c, flags,
-                                flags_alt, flags, "filter")
+    #append raw predictions
+    fp_box = [flags]
+    tp_box = [flags_alt]
+
+    #create logger dataframe
+    logs = run_logger(mol_subset, y_f, y_c,
+                          fp_box, tp_box, 1)
             
     return temp, logs  
     
@@ -227,7 +238,6 @@ def run_catboost(
         y_c: np.ndarray,
         idx: List[int],
         replicates: int,
-        log_predictions: bool = True
         ) -> Tuple[np.ndarray, pd.DataFrame]:
     """Executes CatBoost analysis on given dataset
 
@@ -245,7 +255,6 @@ def run_catboost(
         idx:                (V,) positions of primary actives with confirmatory    
                             readout  
         replicates:         number of replicates to use for the run
-        log_predictions:    enables raw predictions logging
      
     Returns:
         Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
@@ -255,8 +264,9 @@ def run_catboost(
 
     #create results containers
     temp = np.zeros((replicates,9))
-    logs = pd.DataFrame([])
-    
+    fp_box = []
+    tp_box = []
+
     #loop analysis over replicates
     for j in range(replicates):
         
@@ -293,15 +303,19 @@ def run_catboost(
         mols_fp = [mols[x] for x in idx_fp]
         temp[j,7] = get_scaffold_rate(mols_fp)
         
-        #get scaffold diversity for compounds that got flagged as TPs
+        #getscaffold diversity for compounds that got flagged as TPs
         idx_tp = np.where(flags == 1)[0]
         mols_tp = [mols[x] for x in idx_tp]
         temp[j,8] = get_scaffold_rate(mols_tp)
 
-    #optionally store logs
-    if log_predictions is True:
-        logs = run_logger(mols, idx, y_f, y_c, flags_alt[idx],
-                                flags[idx], vals[idx], "catboost")
+        #append raw predictions
+        fp_box.append(flags_alt[idx])
+        tp_box.append(flags[idx])
+
+    #create logger dataframe
+    mols_subset = [mols[x] for x in idx]
+    logs = run_logger(mols_subset, y_f, y_c,
+                          fp_box, tp_box, replicates)
     
     return temp, logs
 
@@ -314,7 +328,6 @@ def run_score(
     y_p: np.ndarray,
     y_f: np.ndarray,
     y_c: np.ndarray,
-    log_predictions: bool = True
     ) -> Tuple[np.ndarray, pd.DataFrame]:
     """Executes Score analysis on given dataset
 
@@ -342,7 +355,6 @@ def run_score(
     """ 
     #create results containers
     temp = np.zeros((1,9))
-    logs = pd.DataFrame([])
     
     #get scores
     scores = np.array(df["Score"])
@@ -372,10 +384,14 @@ def run_score(
     mols_tp = [mols[x] for x in idx_tp]
     temp[0,8] = get_scaffold_rate(mols_tp)
 
-    #optionally fill up logger
-    if log_predictions is True:
-        logs = run_logger(mols, idx, y_f, y_c, flags_alt[idx],
-                                    flags[idx], scores[idx], "score")
+    #append raw predictions
+    fp_box = [flags_alt[idx]]
+    tp_box = [flags[idx]]
+
+    #optionally create logger dataframe
+    mols_subset = [mols[x] for x in idx]
+    logs = run_logger(mols_subset, y_f, y_c,
+                          fp_box, tp_box, 1)
                 
     return temp, logs  
 

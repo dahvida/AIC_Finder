@@ -50,7 +50,7 @@ parser.add_argument('--fragment_filter', default="yes",
 parser.add_argument('--filter_type', default="PAINS",
                     help="Which fragment set to use for the run, options: [PAINS, PAINS_A, PAINS_B, PAINS_C, NIH]")
 
-parser.add_argument('--replicates', default=5, type=int,
+parser.add_argument('--replicates', default=10, type=int,
                     help="How many replicates to use for MVS-A and CatBoost")
 
 parser.add_argument('--feature_type', default="ECFP",
@@ -58,9 +58,6 @@ parser.add_argument('--feature_type', default="ECFP",
 
 parser.add_argument('--filename', default="output",
                     help="Name to use when saving performance results")
-
-parser.add_argument('--log_predictions', default="yes",
-                    help="Whether to log raw predictions, only works if all algorithms are enabled, options: [yes, no]")
 
 args = parser.parse_args()
 
@@ -74,18 +71,7 @@ def main(dataset,
          filter_type,
          replicates,
          feature_type,
-         filename,
-         log_predictions):
-    
-    #turn log_predictions into boolean, then check if it is compatible with other params
-    if log_predictions == "no":
-        log_predictions = False
-    else:
-        if mvs_a == catboost == score == fragment_filter == "yes":
-            log_predictions = True
-        else:
-            print("[eval]: log_predictions works only if all AIC detection algorithms are enabled, setting it to False")
-            log_predictions = False
+         filename):
     
     #adjust dataset_names depending on if the user chose a single dataset
     if dataset != "all":
@@ -93,12 +79,25 @@ def main(dataset,
     else:
         dataset_names = os.listdir("../Datasets")    
         dataset_names = [x[:-4] for x in dataset_names]
-        
-    #create boxes to store results
-    mvs_a_box = np.zeros((len(dataset_names), 20))
-    catboost_box = np.zeros((len(dataset_names), 20))
-    filter_box = np.zeros((len(dataset_names), 20))
-    score_box = np.zeros((len(dataset_names), 20))
+
+    #make directories if they do not exist yet
+    if not os.path.exists("../Results/mvsa"):
+        os.makedirs("../Results/mvsa")
+    if not os.path.exists("../Results/catboost"):
+        os.makedirs("../Results/catboost")
+    if not os.path.exists("../Results/score"):
+        os.makedirs("../Results/score")
+    if not os.path.exists("../Results/filter"):
+        os.makedirs("../Results/filter")
+    
+    if not os.path.exists("../Logs/eval/mvsa"):
+        os.makedirs("../Logs/eval/mvsa")
+    if not os.path.exists("../Logs/eval/catboost"):
+        os.makedirs("../Logs/eval/catboost")
+    if not os.path.exists("../Logs/eval/score"):
+        os.makedirs("../Logs/eval/score")
+    if not os.path.exists("../Logs/eval/filter"):
+        os.makedirs("../Logs/eval/filter")
 
     #print run info
     print("[eval]: Beginning eval run...")
@@ -110,7 +109,6 @@ def main(dataset,
     print(f"        fragment_filter: {fragment_filter} with {filter_type}")
     print(f"        replicates: {replicates}")
     print(f"        feature type: {feature_type}")
-    print(f"        prediction logging: {log_predictions}")
     print(f"        file identifier: {filename}")
     
     #loop analysis over all datasets
@@ -144,50 +142,43 @@ def main(dataset,
         #depending on user options, run analysis and store results
         if mvs_a == "yes":
             print("[eval]: Running MVS-A analysis...")
-            temp, mvs_log = run_mvsa(mols, feats, y_p, y_f, y_c, idx, replicates,
-                                    log_predictions)
-            mvs_a_box = store_row(mvs_a_box, temp, fp_rate, tp_rate, i)
+            output, log = run_mvsa(mols, feats, y_p, y_f, y_c, idx, replicates)
+            save_output(output,
+                        fp_rate,
+                        tp_rate,
+                        name, "mvsa", filename)
+            save_log(log, name, "mvsa")
             print("[eval]: MVS-A analysis finished")
 
         if catboost == "yes":
             print("[eval]: Running CatBoost analysis...")
-            temp, cb_log = run_catboost(mols, feats, y_p, y_f, y_c, idx, replicates,
-                                        log_predictions)
-            catboost_box = store_row(catboost_box, temp, fp_rate, tp_rate, i)
+            output, log = run_catboost(mols, feats, y_p, y_f, y_c, idx, replicates)
+            save_output(output,
+                        fp_rate,
+                        tp_rate,
+                        name, "catboost", filename)
+            save_log(log, name, "catboost")
             print("[eval]: CatBoost analysis finished")            
         
         if score == "yes":
             print("[eval]: Running score analysis...")
-            temp, score_log = run_score(db, mols, idx, y_p,
-                                         y_f, y_c, log_predictions)
-            score_box = store_row(score_box, temp, fp_rate, tp_rate, i)     
+            output, log = run_score(db, mols, idx, y_p, y_f, y_c)
+            save_output(output,
+                        fp_rate,
+                        tp_rate,
+                        name, "score", filename)
+            save_log(log, name, "score")
             print("[eval]: Score analysis finished")
         
         if fragment_filter == "yes":
             print("[eval]: Running filter analysis...")
-            temp, filter_log = run_filter(mols, idx, filter_type, y_f, y_c,
-                                        log_predictions)
-            filter_box = store_row(filter_box, temp, fp_rate, tp_rate, i)
+            output, log = run_filter(mols, idx, filter_type, y_f, y_c)
+            save_output(output,
+                        fp_rate,
+                        tp_rate,
+                        name, "filter", filename)
+            save_log(log, name, "filter")
             print("[eval]: Filter analysis finished")
-
-        #optionally store logs (raw predictions for all compounds)
-        if log_predictions is True:
-            logs = pd.merge(mvs_log, cb_log, how = "inner")
-            logs = pd.merge(logs, filter_log, how = "inner")
-            logs = pd.merge(logs, score_log, how="inner")
-            logpath = "../Logs/eval/" + filename + "_" + name + ".csv"
-            logs.to_csv(logpath)
-            print(f"[eval]: Log saved at {logpath}")
-            
-    #save results for all algorithms as .csv files
-    save_results(
-        [mvs_a_box, catboost_box, score_box, filter_box],
-        dataset_names,
-        filename,
-        filter_type
-        )
-    print("----------------------")
-    print("[eval]: Results saved in ../Results/*_" + filename + ".csv")
     
 
 if __name__ == "__main__":
@@ -200,4 +191,4 @@ if __name__ == "__main__":
          replicates = args.replicates,
          feature_type = args.feature_type.upper(),
          filename = args.filename,
-         log_predictions = args.log_predictions)
+         )

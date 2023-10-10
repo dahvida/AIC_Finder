@@ -266,114 +266,63 @@ def bedroc_score(
 
 #-----------------------------------------------------------------------------#
 
-def store_row(
-        analysis_array: np.ndarray,
+def save_output(
         dataset_array: np.ndarray,
         fp_rate: float,
         tp_rate: float,
-        index: int
-        ) -> np.ndarray:
-    """Stores i-th dataset results in performance container for X datasets
+        dataset_name: str,
+        algorithm_name: str,
+        filename: str
+        ) -> None:
+    """Saves i-th dataset results for a given algorithm
     
     Args:
-        analysis_array: (X,20) dataframe that stores results of a given
-                        algorithm for all datasets
         dataset_array:  (1,9) array with the results of a given algorithm on
                         the i-th dataset
         fp_rate:        fraction of false positives in the confirmatory dataset
         tp_rate:        fraction of true positives in the confirmatory dataset
-        index:          i-th row position to store results in
-
-    Returns:
-        Updated analysis array with results stored in the correct row (not the
-        most elegant solution but at least it provides a straightforward way
-        to handle both single and multi dataset performance collection)
-    """
-
-    analysis_array[index, 0] = np.mean(dataset_array[:,0])      #mean training time
-    analysis_array[index, 1] = np.std(dataset_array[:,0])       #STD training time
-
-    analysis_array[index, 2] = fp_rate                          #baseline FP rate
-    analysis_array[index, 3] = np.mean(dataset_array[:,1])      #mean precision@90 FP
-    analysis_array[index, 4] = np.std(dataset_array[:,1])       #STD precision@90 FP
-    
-    analysis_array[index, 5] = tp_rate                          #baseline TP rate
-    analysis_array[index, 6] = np.mean(dataset_array[:,2])      #mean precision@90 TP
-    analysis_array[index, 7] = np.std(dataset_array[:,2])       #STD precision@90 TP
-
-    analysis_array[index, 8] = np.mean(dataset_array[:,3])      #EF10 for FP
-    analysis_array[index, 9] = np.std(dataset_array[:,3])       #STD EF10 FP
-
-    analysis_array[index, 10] = np.mean(dataset_array[:,4])     #EF10 for TP
-    analysis_array[index, 11] = np.std(dataset_array[:,4])      #STD EF10 TP
-
-    analysis_array[index, 12] = np.mean(dataset_array[:,5])     #BEDROC20 for FP
-    analysis_array[index, 13] = np.std(dataset_array[:,5])      #STD
-
-    analysis_array[index, 14] = np.mean(dataset_array[:,6])     #BEDROC20 for TP
-    analysis_array[index, 15] = np.std(dataset_array[:,6])      #STD
-
-    analysis_array[index, 16] = np.mean(dataset_array[:,7])     #means FP scaffold diversity
-    analysis_array[index, 17] = np.std(dataset_array[:,7])      #STD FP scaffold diversity
-
-    analysis_array[index, 18] = np.mean(dataset_array[:,8])     #means TP scaffold diversity
-    analysis_array[index, 19] = np.std(dataset_array[:,8])      #STD TP scaffold diversity
-    
-    return analysis_array
-
-#-----------------------------------------------------------------------------#
-
-def save_results(
-        results: List[np.ndarray],
-        dataset_names: List,
-        filename: str,
-        filter_type: str
-        ) -> None:
-    """Saves results from all algorithms to their respective .csv files
-    
-    Args:
-        results:        list (4,) containing results arrays for all algorithms.
-                        In case one algorithm was not selected for the run, it
-                        is stored as an empty array in this list and it will 
-                        not be saved to .csv
-        dataset_names:  list (X,) of all dataset names analysed in the run
-        filename:       common name of the .csv files to use when saving (i.e.
-                        if filename=output, the .csv with MVS-A results will be
-                        saved as "mvsa_output.csv")
-        filter_type:    structural alerts name to append when saving the performance
-                        of fragment filters (i.e. "filter_PAINS_output.csv")
+        dataset_name:   name of the dataset to save
+        algorithm_name: name of the algorithm used
 
     Returns:
         None
     """
     
-    column_names = [
-                "Time - mean", "Time - STD",
-                "FP rate",
-                "FP Precision@90 - mean", "FP Precision@90 - STD",
-                "TP rate",
-                "TP Precision@90 - mean", "TP Precision@90 - STD",
-                "FP EF10 - mean", "FP EF10 - STD",
-                "TP EF10 - mean", "TP EF10 - STD",
-                "FP BEDROC20 - mean", "FP BEDROC20 - STD",
-                "TP BEDROC20 - mean", "TP BEDROC20 - STD",
-                "FP Scaffold - mean", "FP Scaffold - STD",
-                "TP Scaffold - mean", "TP Scaffold - STD"
-                ]
-    
-    prefix = "../Results/"
-    suffix = ".csv"
-    algorithm = ["mvsa_", "catboost_", "score_", "filter_" + filter_type + "_"]
-    
-    for i in range(len(results)):
-        if np.sum(results[i]) != 0:             #save only if array is not empty
-            db = pd.DataFrame(
-                    data = results[i],
-                    index = dataset_names,
-                    columns = column_names
-                    )
-            db.to_csv(prefix + algorithm[i] + filename + suffix)
+    n_replicates = dataset_array.shape[0]
+    fp_array = np.full(shape=(n_replicates,1), fill_value=fp_rate)
+    tp_array = np.full(shape=(n_replicates,1), fill_value=tp_rate)
+    complete_array = np.concatenate((fp_array, tp_array, dataset_array), axis=1)
 
+    col_names = [
+            "fp rate",
+            "tp rate",
+            "time",
+            "fp precision",
+            "tp precision",
+            "fp ef10",
+            "tp ef10",
+            "fp bedroc",
+            "tp bedroc",
+            "fp scaffold",
+            "tp scaffold"
+            ]
+    
+    output = pd.DataFrame(data=complete_array,
+                          index=list(range(n_replicates)),
+                          columns=col_names,)
+    filename = "../Results/" + algorithm_name + "/" + filename + "_" + dataset_name + ".csv"
+    output.to_csv(filename)
+
+#-----------------------------------------------------------------------------#
+
+def save_log(
+        raw_predictions: pd.DataFrame,
+        dataset_name: str,
+        algorithm_name: str,
+        ) -> None:
+    
+    filepath = "../Logs/eval/" + algorithm_name + "/" + dataset_name + ".csv"
+    raw_predictions.to_csv(filepath)
 
     
 
