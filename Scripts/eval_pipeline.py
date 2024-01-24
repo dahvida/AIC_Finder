@@ -35,26 +35,29 @@ parser = argparse.ArgumentParser(description=__doc__,
 parser.add_argument('--dataset', default="all",
                     help="Which dataset from ../Datasets to use for the analysis, options: [all, specific_name]")
 
-parser.add_argument('--mvs_a', default="yes",
-                    help="Whether to use MVS-A for the run, options: [yes, no]")
+parser.add_argument('--mvs_a', action="store_true",
+                    help="Whether to use MVS-A for the run")
 
-parser.add_argument('--catboost', default="yes",
-                    help="Whether to use CatBoost for the run, options: [yes, no]")
+parser.add_argument('--catboost', action="store_true",
+                    help="Whether to use CatBoost for the run")
 
-parser.add_argument('--score', default="yes",
-                    help="Whether to use assay readouts for the run, options: [yes, no]")
+parser.add_argument('--score', action="store_true",
+                    help="Whether to use assay readouts for the run")
 
-parser.add_argument('--fragment_filter', default="yes",
-                    help="Whether to use a fragment filter for the run, options: [yes, no]")
+parser.add_argument('--fragment_filter', action="store_true",
+                    help="Whether to use a fragment filter for the run")
 
-parser.add_argument('--filter_type', default="PAINS",
-                    help="Which fragment set to use for the run, options: [PAINS, PAINS_A, PAINS_B, PAINS_C, NIH]")
+parser.add_argument('--isoforest', action="store_true",
+                    help="Whether to use Isolation Forest for the run")
+
+parser.add_argument('--vae', action="store_true",
+                    help="Whether to use VAE for the run")
 
 parser.add_argument('--replicates', default=10, type=int,
                     help="How many replicates to use for MVS-A and CatBoost")
 
 parser.add_argument('--feature_type', default="ECFP",
-                    help="Which molecular representation to use for featurization, options: [ECFP, MACCS, 2D]")
+                    help="Which molecular representation to use for featurization, options: [ECFP, MACCS, 2D, none]")
 
 parser.add_argument('--filename', default="output",
                     help="Name to use when saving performance results")
@@ -68,7 +71,8 @@ def main(dataset,
          catboost,
          score,
          fragment_filter,
-         filter_type,
+         isoforest,
+         vae,
          replicates,
          feature_type,
          filename):
@@ -89,7 +93,11 @@ def main(dataset,
         os.makedirs("../Results/score")
     if not os.path.exists("../Results/filter"):
         os.makedirs("../Results/filter")
-    
+    if not os.path.exists("../Results/isoforest"):
+        os.makedirs("../Results/isoforest")
+    if not os.path.exists("../Results/vae"):
+        os.makedirs("../Results/vae")
+       
     if not os.path.exists("../Logs/eval/mvsa"):
         os.makedirs("../Logs/eval/mvsa")
     if not os.path.exists("../Logs/eval/catboost"):
@@ -98,7 +106,11 @@ def main(dataset,
         os.makedirs("../Logs/eval/score")
     if not os.path.exists("../Logs/eval/filter"):
         os.makedirs("../Logs/eval/filter")
-
+    if not os.path.exists("../Logs/eval/isoforest"):
+        os.makedirs("../Logs/eval/isoforest")
+    if not os.path.exists("../Logs/eval/vae"):
+        os.makedirs("../Logs/eval/vae")
+        
     #print run info
     print("[eval]: Beginning eval run...")
     print("[eval]: Run parameters:")
@@ -106,7 +118,9 @@ def main(dataset,
     print(f"        mvs_a: {mvs_a}")
     print(f"        catboost: {catboost}")
     print(f"        score: {score}")
-    print(f"        fragment_filter: {fragment_filter} with {filter_type}")
+    print(f"        fragment_filter: {fragment_filter}")
+    print(f"        isoforest: {isoforest}")
+    print(f"        vae: {vae}")
     print(f"        replicates: {replicates}")
     print(f"        feature type: {feature_type}")
     print(f"        file identifier: {filename}")
@@ -140,7 +154,7 @@ def main(dataset,
         tp_rate = 1 - fp_rate
         
         #depending on user options, run analysis and store results
-        if mvs_a == "yes":
+        if mvs_a is True:
             print("[eval]: Running MVS-A analysis...")
             output, log = run_mvsa(mols, feats, y_p, y_f, y_c, idx, replicates)
             save_output(output,
@@ -150,7 +164,7 @@ def main(dataset,
             save_log(log, name, "mvsa")
             print("[eval]: MVS-A analysis finished")
 
-        if catboost == "yes":
+        if catboost is True:
             print("[eval]: Running CatBoost analysis...")
             output, log = run_catboost(mols, feats, y_p, y_f, y_c, idx, replicates)
             save_output(output,
@@ -160,7 +174,7 @@ def main(dataset,
             save_log(log, name, "catboost")
             print("[eval]: CatBoost analysis finished")            
         
-        if score == "yes":
+        if score is True:
             print("[eval]: Running score analysis...")
             output, log = run_score(db, mols, idx, y_p, y_f, y_c)
             save_output(output,
@@ -170,24 +184,45 @@ def main(dataset,
             save_log(log, name, "score")
             print("[eval]: Score analysis finished")
         
-        if fragment_filter == "yes":
+        if fragment_filter is True:
             print("[eval]: Running filter analysis...")
-            output, log = run_filter(mols, idx, filter_type, y_f, y_c)
+            output, log = run_filter(mols, idx, y_p, y_f, y_c)
             save_output(output,
                         fp_rate,
                         tp_rate,
                         name, "filter", filename)
             save_log(log, name, "filter")
             print("[eval]: Filter analysis finished")
+            
+        if isoforest is True:
+            print("[eval]: Running Isolation Forest analysis...")
+            output, log = run_isoforest(mols, feats, y_p, y_f, y_c, idx, replicates)
+            save_output(output,
+                        fp_rate,
+                        tp_rate,
+                        name, "isoforest", filename)
+            save_log(log, name, "isoforest")
+            print("[eval]: Filter analysis finished")
+
+        if vae is True:
+            print("[eval]: Running VAE analysis...")
+            output, log = run_vae(mols, y_p, y_f, y_c, idx, replicates)
+            save_output(output,
+                        fp_rate,
+                        tp_rate,
+                        name, "vae", filename)
+            save_log(log, name, "vae")
+            print("[eval]: Filter analysis finished")
     
 
 if __name__ == "__main__":
     main(dataset = args.dataset,
-         mvs_a = args.mvs_a.lower(),
-         catboost = args.catboost.lower(),
-         score = args.score.lower(),
-         fragment_filter = args.fragment_filter.lower(),
-         filter_type = args.filter_type.upper(),
+         mvs_a = args.mvs_a,
+         catboost = args.catboost,
+         score = args.score,
+         fragment_filter = args.fragment_filter,
+         isoforest = args.isoforest,
+         vae = args.vae,
          replicates = args.replicates,
          feature_type = args.feature_type.upper(),
          filename = args.filename,

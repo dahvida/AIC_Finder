@@ -10,6 +10,8 @@ from catboost import CatBoostClassifier as clf
 from rdkit import Chem
 import pandas as pd
 import rdkit
+from sklearn.ensemble import IsolationForest
+from vae import *
 
 ###############################################################################
 
@@ -160,7 +162,7 @@ def run_mvsa(
 def run_filter(
         mols: List[rdkit.Chem.rdchem.Mol],
         idx: List[int],
-        filter_type: str,
+        y_p: np.ndarray,
         y_f: np.ndarray,
         y_c: np.ndarray,
         log_predictions: bool = True
@@ -190,37 +192,41 @@ def run_filter(
     #get primary actives with confirmatory measurement
     mol_subset = [mols[x] for x in idx]
             
-    #use substructure filters to flag FPs, time it and measure precision
+    #use substructure filters to flag FPs and time it 
     start = time.time()
-    flags = filter_predict(mol_subset, filter_type)
+    preds = filter_predict(mol_subset)
     temp[0,0] = time.time() - start
-    temp[0,1] = precision_score(y_f, flags)
     
-    #invert filter flagging to find TPs and measure precision
-    flags_alt = (flags - 1) * -1
-    temp[0,2] = precision_score(y_c, flags_alt)
+    #store preds and convert to percentiles
+    preds_dummy = np.zeros((len(mols)))
+    preds_dummy[idx] = preds
+    flags, flags_alt = process_ranking(y_p, preds_dummy)
+        
+    #measure precision
+    temp[0,1] = precision_score(y_f, flags[idx])
+    temp[0,2] = precision_score(y_c, flags_alt[idx])
     
     #get EF10 for FPs and TPs
-    temp[0,3] = enrichment_factor_score(y_f, flags)
-    temp[0,4] = enrichment_factor_score(y_c, flags_alt)
+    temp[0,3] = enrichment_factor_score(y_f, flags[idx])
+    temp[0,4] = enrichment_factor_score(y_c, flags_alt[idx])
 
     #get BEDROC20 for FPs and TPs
-    temp[0,5] = bedroc_score(y_f, flags, reverse=True)
-    temp[0,6] = bedroc_score(y_c, flags_alt, reverse=True)	
+    temp[0,5] = bedroc_score(y_f, preds, reverse=True)
+    temp[0,6] = bedroc_score(y_c, preds, reverse=False)	
 
     #get scaffold diversity for compounds that got flagged as FPs
     idx_fp = np.where(flags == 1)[0]
-    mols_fp = [mol_subset[x] for x in idx_fp]
+    mols_fp = [mols[x] for x in idx_fp]
     temp[0,7] = get_scaffold_rate(mols_fp)
     
     #get scaffold diversity for compounds that got flagged as TPs
     idx_tp = np.where(flags_alt == 1)[0]
-    mols_tp = [mol_subset[x] for x in idx_tp]
+    mols_tp = [mols[x] for x in idx_tp]
     temp[0,8] = get_scaffold_rate(mols_tp)
 
     #append raw predictions
-    fp_box = [flags]
-    tp_box = [flags_alt]
+    fp_box = [flags[idx]]
+    tp_box = [flags_alt[idx]]
 
     #create logger dataframe
     logs = run_logger(mol_subset, y_f, y_c,
@@ -395,5 +401,190 @@ def run_score(
                 
     return temp, logs  
 
+#-----------------------------------------------------------------------------#
 
+def run_isoforest(
+        mols: List[rdkit.Chem.rdchem.Mol],
+        x: np.ndarray,
+        y_p: np.ndarray,
+        y_f: np.ndarray,
+        y_c: np.ndarray,
+        idx: List[int],
+        replicates: int,
+        ) -> Tuple[np.ndarray, pd.DataFrame]:
+    """Executes Isolation Forest analysis on given dataset
 
+    Uses CatBoost object importance function to rank primary screen actives
+    in terms of likelihood of being false positives or true positives. Ranking
+    is inverted, so that it is according to original paper and similar to MVS-A.
+    Finally, the function computes precision@90, EF10, BEDROC20 and scaffold
+    diversity metrics.
+    
+    Args:
+        mols:               (M,) mol objects from primary data
+        x:                  (M, 1024) ECFPs of primary screen molecules
+        y_p:                (M,) primary screen labels
+        y_f:                (V,) false positive labels (1=FP)        
+        y_c:                (V,) true positive labels (1=FP)
+        idx:                (V,) positions of primary actives with confirmatory    
+                            readout  
+        replicates:         number of replicates to use for the run
+     
+    Returns:
+        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
+        scaffold diversity and training time, and one dataframe (V,5) with
+        SMILES, true labels and raw predictions
+    """
+
+    #create results containers
+    temp = np.zeros((replicates,9))
+    fp_box = []
+    tp_box = []
+    
+    primary_idx = np.where(y_p==1)[0]
+    
+    x_train = x[primary_idx]
+    
+    #loop analysis over replicates
+    for j in range(replicates):
+        
+        #train Isolation Forest model, get sample importance and time it
+        start = time.time()
+        model = IsolationForest(n_jobs=-1, random_state=j)
+        model.fit(x)
+        temp[j,0] = time.time() - start
+        
+        #get predictions and reshape
+        preds = model.score_samples(x_train)
+        preds_dummy = np.zeros((len(mols)))
+        preds_dummy[primary_idx] = preds
+        flags, flags_alt = process_ranking(y_p, preds_dummy)
+
+        #get precision@90 for FP and TP retrieval
+        temp[j,1] = precision_score(y_f, flags[idx])
+        temp[j,2] = precision_score(y_c, flags_alt[idx])
+        
+        #get EF10 for FPs and TPs
+        temp[j,3] = enrichment_factor_score(y_f, flags[idx])
+        temp[j,4] = enrichment_factor_score(y_c, flags_alt[idx])
+
+        #get BEDROC20 for FPs and TPs
+        temp[j,5] = bedroc_score(y_f, preds_dummy[idx], reverse=True)
+        temp[j,6] = bedroc_score(y_c, preds_dummy[idx], reverse=False)	 
+        
+        #get scaffold diversity for compounds that got flagged as FPs
+        idx_fp = np.where(flags == 1)[0]
+        mols_fp = [mols[x] for x in idx_fp]
+        temp[j,7] = get_scaffold_rate(mols_fp)
+
+        #get scaffold diversity for compounds that got flagged as TPs
+        idx_tp = np.where(flags_alt == 1)[0]
+        mols_tp = [mols[x] for x in idx_tp]
+        temp[j,8] = get_scaffold_rate(mols_tp)
+        
+        #append raw predictions
+        fp_box.append(flags[idx])
+        tp_box.append(flags_alt[idx])
+
+    #create logger dataframe
+    mols_subset = [mols[x] for x in idx]
+    logs = run_logger(mols_subset, y_f, y_c,
+                          fp_box, tp_box, replicates)
+    
+    return temp, logs
+
+#-----------------------------------------------------------------------------#
+
+def run_vae(
+        mols: List[rdkit.Chem.rdchem.Mol],
+        y_p: np.ndarray,
+        y_f: np.ndarray,
+        y_c: np.ndarray,
+        idx: List[int],
+        replicates: int,
+        ) -> Tuple[np.ndarray, pd.DataFrame]:
+    """Executes VAE analysis on given dataset
+
+    Uses VAE to rank primary screen actives
+    in terms of likelihood of being false positives or true positives. Ranking
+    is inverted, so that it is according to original paper and similar to MVS-A.
+    Finally, the function computes precision@90, EF10, BEDROC20 and scaffold
+    diversity metrics.
+    
+    Args:
+        mols:               (M,) mol objects from primary data
+        x:                  (M, 1024) ECFPs of primary screen molecules
+        y_p:                (M,) primary screen labels
+        y_f:                (V,) false positive labels (1=FP)        
+        y_c:                (V,) true positive labels (1=FP)
+        idx:                (V,) positions of primary actives with confirmatory    
+                            readout  
+        replicates:         number of replicates to use for the run
+     
+    Returns:
+        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
+        scaffold diversity and training time, and one dataframe (V,5) with
+        SMILES, true labels and raw predictions
+    """
+
+    #create results containers
+    temp = np.zeros((replicates,9))
+    fp_box = []
+    tp_box = []
+    
+    primary_idx = np.where(y_p==1)[0]
+    
+    primary_mols = [mols[x] for x in primary_idx]
+    smiles = [Chem.MolToSmiles(x) for x in primary_mols]
+    x = tokenize(smiles)
+    dataset = VAEDataset(x)
+    generator = gen2 = DataLoader(dataset, batch_size=32, shuffle=True)
+    
+    #loop analysis over replicates
+    for j in range(replicates):
+        
+        #train Isolation Forest model, get sample importance and time it
+        start = time.time()
+        model = VAE(dict_size=x.shape[2],
+                    max_length=x.shape[1]-1)
+        model.train(generator)
+        temp[j,0] = time.time() - start
+        
+        #get predictions and reshape
+        preds = model.predict(x)
+        preds_dummy = np.zeros((len(mols)))
+        preds_dummy[primary_idx] = preds
+        flags, flags_alt = process_ranking(y_p, preds_dummy)
+
+        #get precision@90 for FP and TP retrieval
+        temp[j,1] = precision_score(y_f, flags[idx])
+        temp[j,2] = precision_score(y_c, flags_alt[idx])
+        
+        #get EF10 for FPs and TPs
+        temp[j,3] = enrichment_factor_score(y_f, flags[idx])
+        temp[j,4] = enrichment_factor_score(y_c, flags_alt[idx])
+
+        #get BEDROC20 for FPs and TPs
+        temp[j,5] = bedroc_score(y_f, preds_dummy[idx], reverse=True)
+        temp[j,6] = bedroc_score(y_c, preds_dummy[idx], reverse=False)	 
+        
+        #get scaffold diversity for compounds that got flagged as FPs
+        idx_fp = np.where(flags == 1)[0]
+        mols_fp = [mols[x] for x in idx_fp]
+        temp[j,7] = get_scaffold_rate(mols_fp)
+
+        #get scaffold diversity for compounds that got flagged as TPs
+        idx_tp = np.where(flags_alt == 1)[0]
+        mols_tp = [mols[x] for x in idx_tp]
+        temp[j,8] = get_scaffold_rate(mols_tp)
+        
+        #append raw predictions
+        fp_box.append(flags[idx])
+        tp_box.append(flags_alt[idx])
+
+    #create logger dataframe
+    mols_subset = [mols[x] for x in idx]
+    logs = run_logger(mols_subset, y_f, y_c,
+                          fp_box, tp_box, replicates)
+    
+    return temp, logs
