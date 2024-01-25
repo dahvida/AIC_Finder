@@ -7,6 +7,7 @@ from rdkit.ML.Descriptors import MoleculeDescriptors
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit.ML.Scoring.Scoring import CalcBEDROC
 import pandas as pd
+from mordred import Calculator, descriptors
 
 ###############################################################################
 
@@ -98,6 +99,27 @@ def get_2D(
     #prune outliers
     descs = np.nan_to_num(descs, posinf=10e10, neginf=-10e10)
     
+    return descs
+
+#-----------------------------------------------------------------------------#
+
+def get_mordred(mols):
+    """
+    Helper function to calculate 2D Mordred descriptors from
+    RDKIT molecules
+    """
+    calc = Calculator(descriptors, ignore_3D=True)
+    output = calc.map(mols, quiet=True)
+    output = [x for x in output]
+    
+    descs = np.zeros((len(mols), 1613))
+    for i in range(len(mols)):
+        descs[i,:] = np.array(output[i])
+    
+    descs = np.nan_to_num(descs, neginf=-10000, posinf=10000)
+    descs[descs < -10000] = -10000
+    descs[descs > 10000] = 10000
+
     return descs
 
 #-----------------------------------------------------------------------------#

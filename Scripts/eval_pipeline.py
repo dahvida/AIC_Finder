@@ -202,7 +202,7 @@ def main(dataset,
                         tp_rate,
                         name, "isoforest", filename)
             save_log(log, name, "isoforest")
-            print("[eval]: Filter analysis finished")
+            print("[eval]: Isoforest analysis finished")
 
         if vae is True:
             print("[eval]: Running VAE analysis...")
@@ -212,7 +212,7 @@ def main(dataset,
                         tp_rate,
                         name, "vae", filename)
             save_log(log, name, "vae")
-            print("[eval]: Filter analysis finished")
+            print("[eval]: VAE analysis finished")
     
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ def get_stats():
         for k in range(len(baselines)):
             arr2 = np.array(baselines[k][col_names[i]])
             _, p = wilcoxon(arr1, arr2, alternative="greater")
-            array[i,k] = p * len(baselines)
+            array[i,k] = p
     
     db = pd.DataFrame(data=array,
                       columns=algorithms[1:],
