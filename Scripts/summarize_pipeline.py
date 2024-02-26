@@ -1,11 +1,17 @@
+"""Results summarization pipeline.
+
+Pipeline to summarize the results into single .csv files for each model and carry
+out statistical testing
+"""
+
 import pandas as pd
 import numpy as np
 import os
 from scipy.stats import wilcoxon
-import os
 
 ###############################################################################
 
+# utility function to aggregate results across replicates and datasets
 def get_means():
     algorithms = ["mvsa", "catboost", "score", "filter", "isoforest", "vae"]
     for j in range(len(algorithms)):
@@ -33,6 +39,8 @@ def get_means():
 
 #-----------------------------------------------------------------------------#
 
+# utility function to do statistical tests. Bonferroni correction is done
+# manually on the output
 def get_stats():
     algorithms = ["mvsa", "catboost", "score", "filter", "isoforest", "vae"]
     db_list = []
@@ -58,7 +66,7 @@ def get_stats():
                       )
     db.to_csv("../Results/summary/stats.csv")
 
-#-----------------------------------------------------------------------------#
+###############################################################################
 
 def main():
     path = "../Results/summary/"

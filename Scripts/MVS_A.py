@@ -94,7 +94,7 @@ class sample_analysis:
         
         #optionally log info
         if self.verbose is True:
-            print("[MVS-SA]: LightGBM model constructed, used", self.n_estimators, "trees")    
+            print("[MVS-A]: LightGBM model constructed, used", self.n_estimators, "trees")    
     
     def get_l1(self,
             tree_n: int
@@ -187,7 +187,7 @@ class sample_analysis:
         
         #optionally log update
         if self.verbose is True:
-            print("[MVS-SA]: Sample importance calculated")
+            print("[MVS-A]: Sample importance calculated")
             
         #return all scores for each tree to see the change of importance during training
         if return_trajectory is True:

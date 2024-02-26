@@ -1,24 +1,30 @@
 ## Folder description
-Python files containing "pipeline" in their name are meant to be used as command line tools. [evals.py](evals.py), [utils.py](utils.py) and [fragment_filter.py](fragment_filter.py) contain helper functions to execute the scripts. [MVS_A.py](MVS_A.py) contains the class for running Minimum Variance Sampling Analysis for assay interfering compound retrieval.  
+Code used to generate the results described in the study. Files containing "pipeline" in their name are meant to be used as command line tools.  
 
 ## Files documentation
-- [cleanup_pipeline.py:](cleanup_pipeline.py) Executes the standardization and assay merging script to generate datasets ready to be analyzed. Outputs are saved in [Datasets](../Datasets), logs are saved in [../Logs/cleanup](../Logs/cleanup).  
+- [cleanup_pipeline.py:](cleanup_pipeline.py) Executes the standardization and assay merging script to generate datasets ready to be analyzed. Outputs are saved in [Datasets](../Datasets), logs are saved in [Logs/cleanup](../Logs/cleanup).  
 
 - [info_pipeline.py:](info_pipeline.py) Collects relevant statistics from all datasets in [Datasets](../Datasets). Outputs are saved in [Logs](../Logs)  
 
-- [eval_pipeline.py:](eval_pipeline.py) Collects performance metrics for AIC retrieval algorithms for the benchmarks in [Datasets](../Datasets). Performance is evaluated in terms of Precision (K=10%), Enrichment Factor (K=10%), BEDROC (alpha=20), calculation time (s) and Murko scaffold diversity. Outputs are saved in [Results](../Results), raw predictions are saved in [/Logs/eval](../Logs/eval). Current AIC retrieval algorithms include MVS-A, CatBoost Object Importance, structural alerts (i.e. PAINS) and sorting by primary assay readout (top 10% most active compounds in primary screen are flagged as TPs, vice versa for FPs). Prediction logging is only enabled if all AIC retrieval algorithms were enabled.  
+- [eval_pipeline.py:](eval_pipeline.py) Collects performance metrics for AIC retrieval algorithms for the benchmarks in [Datasets](../Datasets). Performance is evaluated in terms of Precision (K=10%), Enrichment Factor (K=10%), BEDROC (alpha=20), calculation time (s) and Murko scaffold diversity. Outputs are saved in [Results](../Results), raw predictions are saved in [/Logs/eval](../Logs/eval). Current AIC retrieval algorithms include MVS-A, CatBoost Object Importance, structural alerts (GSK and REOS filters), Isolation Forest, Variational Autoencoder and sorting by primary assay readout (top 10% most active compounds in primary screen are flagged as TPs).  
 
-- [agg_pipeline.py:](agg_pipeline.py) Measures detection overlap between false positives identified via MVS-A and ones that are considered aggregators by a LightGBM model trained on [aggregators.zip](../Misc/aggregators.zip). It also measures Precision@10, EF@10 and BEDROC20 for false positive retrieval. Before running this pipeline, make sure to unzip the relative file and run eval_pipeline.py with logging enabled. The output is saved in [Results](../Results).  
+- [opt_pipeline.py:](opt_pipeline.py) Script to generate the autofluorescence predictor with Bayesian hyperparameter optimization. The 10-fold cross-validation performance is saved in [Misc](../Misc).
 
-- [fh_pipeline.py:](fh_pipeline.py) Measures detection overlap between false positives identified via MVS-A and ones that are considered frequent hitters by a LightGBM model trained on [frequent_hitters.zip](../Misc/frequent_hitters.zip). It also measures Precision@10, EF@10 and BEDROC20 for false positive retrieval. Before running this pipeline, make sure to unzip the relative file and run eval_pipeline.py with logging enabled. The output is saved in [Results](../Results).  
+- [predictors_pipeline.py:](predictors_pipeline.py) Computes performance metrics from the predictions of Hit Dexter, SCAM Detective and the autofluorescence predictor. The predictions are stored in [Logs/eval](../Logs/eval), while the output is saved in [Results/fp_detectors](../Results/fp_detectors).  
 
-- [fluo_pipeline.py:](fluo_pipeline.py) Measures detection overlap between false positives identified via MVS-A and ones that are considered aggregators by a multitask neural network trained on [cleaned_autofluo.zip](../Misc/cleaned_autofluo.zip). It also measures Precision@10, EF@10 and BEDROC20 for false positive retrieval. Before running this pipeline, make sure to unzip the relative file and run eval_pipeline.py with logging enabled. The output is saved in [Results](../Results). This pipeline requires installing tensorflow 2.4.0 in the environment. Calculations are set to be executed on CPU.  
+- [summarize_pipeline.py:](summarize_pipeline.py) Averages performance metrics for each method across replicates and generates final summary files for performance metrics and statistical tests. The output is saved in [Results/summary](../Results/summary).  
+
+- [case_study_pipeline.py:](case_study_pipeline.py) Script to reproduce the case study analysis reported in the publication.  
+
+- [evals.py:](evals.py) Contains the dataset evaluation functions used to collect performance metrics in [eval_pipeline.py:](eval_pipeline.py).  
 
 - [utils.py:](utils.py) Contains various helper functions used in all pipelines (i.e. generating ECFPs etc). One key function is `process_ranking`, which is used to convert raw importance scores into binary labels for *precision@10* calculation.  
 
-- [fragment_filter.py:](fragment_filter.py) Contains the function for using structural alerts as decision rules to classify FPs and TPs. Currently supports PAINS, PAINS-A, PAINS-B, PAINS-C and NIH filters.  
+- [fragment_filter.py:](fragment_filter.py) Contains the function for using structural alerts as decision rules to classify FPs and TPs. Currently supports GSK and REOS filters.  
 
-- [evals.py:](evals.py) Contains the dataset evaluation functions used to collect performance metrics in [eval_pipeline.py:](eval_pipeline.py).  
+- [filters.cvs:](filters.csv) SMARTS definition of the GSK structural alerts used in `fragment_filter.py`.  
+
+- [vae.py:](vae.py) PyTorch implementation of a SMILES-based Variational Autoencoder for anomaly detection. The implementation and hyperparameters are based on https://github.com/aspuru-guzik-group/chemical_vae.  
 
 - [MVS_A.py:](MVS_A.py) Contains the `sample_analysis` class, which contains all relevant methods for running MVS-A outside of these scripts. See the README on the main page for a jupyter notebook example.  
 

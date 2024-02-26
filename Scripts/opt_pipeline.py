@@ -1,3 +1,24 @@
+"""Fluorescence predictor model development pipeline.
+
+Pipeline to create a set of fluorescence predictors to identify HTS false positives
+according to InterPred (https://pubmed.ncbi.nlm.nih.gov/32421835/).
+Some details could not be reproduced due to the usage in the WebApp of Python 2
+packages, missing data (many compounds had CAS identifies that could not be parsed
+by the Chemical Identifier Resolver), missing information on the model development process
+(e.g. target metric for optimization, parameter ranges, splits). 
+
+Steps:
+    1. Load assays
+    2. Compute ~1600 molecular descriptors via Mordred
+    3. Split train/test 90/10
+    4. Random undersample inactives to enforce 70/30 ratio inactives/actives
+    5. Optimize hyperparameters via grid search on 10-fold CV on the train set
+    6. Create a bagged ensemble (10 models) on the non-sampled train set and
+        test it on the test set
+    5. Repeat steps 3-6 for all 13 endpoints
+    6. Save ensembles
+"""
+
 import pandas as pd
 from utils import *
 import numpy as np

@@ -80,12 +80,12 @@ def run_mvsa(
     Uses MVS-A importance scores to rank primary screen actives in terms of 
     likelihood of being false positives or true positives. Top ranked compounds
     are FPs, as indicated in TracIn, while bottom ranked compounds are TPs.
-    Finally, the function computes precision@90, EF10, BEDROC20
+    Finally, the function computes precision@90, EF10, BEDROC20, time
     and scaffold diversity metrics.
 
     Args:
         mols:               (M,) mol objects from primary data
-        x:                  (M, 1024) ECFPs of primary screen molecules
+        x:                  (M, K) fingerprints/descriptors of primary screen
         y_p:                (M,) primary screen labels
         y_f:                (V,) false positive labels (1=FP)        
         y_c:                (V,) true positive labels (1=FP)
@@ -94,7 +94,7 @@ def run_mvsa(
         replicates:         number of replicates to use for the run
      
     Returns:
-        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,9) with metrics for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """
@@ -165,23 +165,22 @@ def run_filter(
         y_p: np.ndarray,
         y_f: np.ndarray,
         y_c: np.ndarray,
-        log_predictions: bool = True
         ) -> Tuple[np.ndarray, pd.DataFrame]:
     """Executes structural alert analysis on given dataset
     
     Uses structural alerts to mark primary hits as TPs or FPs. Then, 
-    it computes precision@90, EF10, BEDROC20 and scaffold diversity indices. 
+    it computes precision@90, EF10, BEDROC20, time and scaffold diversity indices. 
     
     Args:
         mols:               (M,) mol objects from primary data
         idx:                (V,) positions of primary actives with confirmatory    
                             readout  
-        filter_type:        name of the structural alerts class to use                   
+        y_p:                (M,) primary screen labels    
         y_f:                (V,) false positive labels (1=FP)        
         y_c:                (V,) true positive labels (1=FP)
      
     Returns:
-        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,9) with metrics for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """
@@ -250,11 +249,12 @@ def run_catboost(
     Uses CatBoost object importance function to rank primary screen actives
     in terms of likelihood of being false positives or true positives. Unlike
     for MVS-A, top ranked compounds are TPs, bottom ranked compounds FPs. Finally,
-    the function computes precision@90, EF10, BEDROC20 and scaffold diversity metrics.
+    the function computes precision@90, EF10, BEDROC20, time and scaffold 
+    diversity metrics.
     
     Args:
         mols:               (M,) mol objects from primary data
-        x:                  (M, 1024) ECFPs of primary screen molecules
+        x:                  (M, K) fingerprints/descriptors of primary screen
         y_p:                (M,) primary screen labels
         y_f:                (V,) false positive labels (1=FP)        
         y_c:                (V,) true positive labels (1=FP)
@@ -263,7 +263,7 @@ def run_catboost(
         replicates:         number of replicates to use for the run
      
     Returns:
-        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,9) with metrics for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """
@@ -344,20 +344,18 @@ def run_score(
     EF10, BEDROC20 and scaffold diversity metrics.
     
     Args:
+        df:                 (M,4) dataframe of the HTS to analyse
         mols:               (M,) mol objects from primary data
-        x:                  (M, 1024) ECFPs of primary screen molecules
+        idx:                (V,) positions of primary actives with confirmatory    
+                            readout  
         y_p:                (M,) primary screen labels
         y_f:                (V,) false positive labels (1=FP)        
         y_c:                (V,) true positive labels (1=FP)
-        idx:                (V,) positions of primary actives with confirmatory    
-                            readout  
-        replicates:         number of replicates to use for the run
-        log_predictions:    enables raw predictions logging
      
     Returns:
-        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
-        scaffold diversity and training time, and one dataframe (V,5) with
-        SMILES, true labels and raw predictions
+        Tuple containing one array (1,9) with metrics for FP and TP retrieval and 
+        scaffold diversity, and one dataframe (V,5) with SMILES, true labels 
+        and raw predictions
     """ 
     #create results containers
     temp = np.zeros((1,9))
@@ -414,15 +412,16 @@ def run_isoforest(
         ) -> Tuple[np.ndarray, pd.DataFrame]:
     """Executes Isolation Forest analysis on given dataset
 
-    Uses CatBoost object importance function to rank primary screen actives
-    in terms of likelihood of being false positives or true positives. Ranking
-    is inverted, so that it is according to original paper and similar to MVS-A.
-    Finally, the function computes precision@90, EF10, BEDROC20 and scaffold
+    Uses Isolation Forest anomaly detection to rank primary screen actives
+    in terms of likelihood of being false positives or true positives. According
+    to scikit-learn's documentation, low scores correspond to anomalies, so the
+    ranking is inverted.
+    Finally, the function computes precision@90, EF10, BEDROC20, time and scaffold
     diversity metrics.
     
     Args:
         mols:               (M,) mol objects from primary data
-        x:                  (M, 1024) ECFPs of primary screen molecules
+        x:                  (M, K) fingerprints/descriptors of primary screen
         y_p:                (M,) primary screen labels
         y_f:                (V,) false positive labels (1=FP)        
         y_c:                (V,) true positive labels (1=FP)
@@ -431,7 +430,7 @@ def run_isoforest(
         replicates:         number of replicates to use for the run
      
     Returns:
-        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,9) with metrics for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """
@@ -457,7 +456,7 @@ def run_isoforest(
         #get predictions and reshape
         preds = model.score_samples(x_train)
         preds_dummy = np.zeros((len(mols)))
-        preds_dummy[primary_idx] = preds
+        preds_dummy[primary_idx] = -preds
         flags, flags_alt = process_ranking(y_p, preds_dummy)
 
         #get precision@90 for FP and TP retrieval
@@ -505,15 +504,15 @@ def run_vae(
         ) -> Tuple[np.ndarray, pd.DataFrame]:
     """Executes VAE analysis on given dataset
 
-    Uses VAE to rank primary screen actives
-    in terms of likelihood of being false positives or true positives. Ranking
-    is inverted, so that it is according to original paper and similar to MVS-A.
+    Uses VAE anomaly detection to rank primary screen actives in terms of 
+    likelihood of being false positives or true positives. The ranking is calculated
+    according to the reconstruction error, with high reconstruction indicating
+    anomalies.
     Finally, the function computes precision@90, EF10, BEDROC20 and scaffold
     diversity metrics.
     
     Args:
         mols:               (M,) mol objects from primary data
-        x:                  (M, 1024) ECFPs of primary screen molecules
         y_p:                (M,) primary screen labels
         y_f:                (V,) false positive labels (1=FP)        
         y_c:                (V,) true positive labels (1=FP)
@@ -522,7 +521,7 @@ def run_vae(
         replicates:         number of replicates to use for the run
      
     Returns:
-        Tuple containing one array (1,9) with precision@90 for FP and TP retrieval, 
+        Tuple containing one array (1,9) with metrics for FP and TP retrieval, 
         scaffold diversity and training time, and one dataframe (V,5) with
         SMILES, true labels and raw predictions
     """

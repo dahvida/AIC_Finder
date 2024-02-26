@@ -23,7 +23,6 @@ import pandas as pd
 from rdkit import Chem
 import numpy as np
 from chembl_structure_pipeline import standardizer
-import sys
 import argparse
 
 ###############################################################################
@@ -164,7 +163,7 @@ def main(
     assert len(db_final) == len(db_primary), "[cleanup]: All compounds in confirmatory should be present in primary assay"
     db_cut = db_final.drop_duplicates(subset=["SMILES"])
     assert len(db_final) == len(db_cut), "[cleanup]: There shouldn't be any more duplicate SMILES"
-    print(f"[cleanup]: Tests passed successfully")
+    print("[cleanup]: Tests passed successfully")
 
     #save dataframe
     path = "../Datasets/" + filename + ".csv"
