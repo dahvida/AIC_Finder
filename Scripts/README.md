@@ -2,6 +2,8 @@
 Code used to generate the results described in the study. Files containing "pipeline" in their name are meant to be used as command line tools.  
 
 ## Files documentation
+- [analyze_hts_pipeline.py:](analyze_hts_pipeline.py) Automates the use of MVS-A on new datasets. See the Tutorial section on the README in the main page or the documentation in the file for information on how to use it.  
+
 - [cleanup_pipeline.py:](cleanup_pipeline.py) Executes the standardization and assay merging script to generate datasets ready to be analyzed. Outputs are saved in [Datasets](../Datasets), logs are saved in [Logs/cleanup](../Logs/cleanup).  
 
 - [info_pipeline.py:](info_pipeline.py) Collects relevant statistics from all datasets in [Datasets](../Datasets). Outputs are saved in [Logs](../Logs)  
