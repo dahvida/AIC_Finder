@@ -33,6 +33,7 @@ cd /AIC_finder/Scripts
 python3 analyze_hts_pipeline.py --input_file ../Datasets/target.csv
 ```
 In this toy example, the analysis results will be stored in two files, saved at the same path of the input file: `target_actives.csv` and `target_inactives.csv`. The first file will show all HTS hits, sorted from most to least likely to be a true positive. The second file will show all HTS non-hits, sorted from most to least likely to be a false negative. The "Alerts" column will report all GSK and REOS structural alerts triggered by a given compound. The script will check for the following alerts:  
+
 - GSK problematic substructures (https://doi.org/10.1177/2472555218768497).  
 - Molecular weight less than 200 or more than 500 Da (https://www.nature.com/articles/nrd1063#Sec3).  
 - LogP less than -5.0 or more than 5.0 (https://www.nature.com/articles/nrd1063#Sec3).  
@@ -41,6 +42,7 @@ In this toy example, the analysis results will be stored in two files, saved at 
 - Maximum absolute formal charge less than -2 or more than 2 (https://www.nature.com/articles/nrd1063#Sec3).  
 - Number of rotatable bonds above 8 (https://www.nature.com/articles/nrd1063#Sec3).  
 - Number of heavy atoms less than 8 or more than 50 (https://www.nature.com/articles/nrd1063#Sec3).  
+
 If any GSK substructures are found, the matches are reported as SMARTS fragments, which you can visualize them with this tool: https://smarts.plus/. For the remaining filter, a flag will be added to "Alerts" if any property is outside the desired range. For example, if a molecule has a molecular weight above 500, the "Alerts" column will report "Molecular weight" and so forth.  
 
 ### Jupyter notebook
