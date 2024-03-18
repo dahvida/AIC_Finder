@@ -67,6 +67,7 @@ true_positives, false_positives = process_ranking(y_p, vals)
 ```
 
 ## How to cite
-Link to publication  
+Please refer to the following publication:  
+https://pubs.acs.org/doi/10.1021/acscentsci.3c01517
 
 
